@@ -5,6 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>公告详情 - 采购管理平台</title>
     <link rel="stylesheet" href="../static/css.css">
+    <style>
+        .editor-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 10px;background:#f7f7f7;border:1px solid #eee;border-radius:4px;margin-bottom:6px;}
+        .editor-toolbar .tb-group-label{font-size:12px;color:#888;white-space:nowrap;}
+        .editor-toolbar .tb-sep{width:1px;height:18px;background:#ddd;}
+        .tb-group{position:relative;display:inline-block;}
+        .tb-group:hover .tb-dropdown{display:block;}
+        .tb-dropdown{display:none;position:absolute;left:0;top:100%;z-index:999;min-width:120px;padding-top:4px;background:transparent;}
+        .tb-dropdown::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;}
+        .tb-dropdown .tb-menu{background:#fff;border:1px solid #ddd;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.15);padding:4px 0;}
+        .tb-dropdown button{display:block;width:100%;border:none;background:none;text-align:left;padding:8px 12px;cursor:pointer;font-size:13px;color:#333;white-space:nowrap;}
+        .tb-dropdown button:hover{background:#f0f4ff;color:#1f4e99;}
+    </style>
 </head>
 <body>
 <div class="main-container">
@@ -52,7 +64,7 @@
                         <span style="margin-left:16px;">发布时间：<span id="t_create"></span></span>
                         <span style="margin-left:16px;" id="snWrap">项目编号：<span id="t_sn"></span></span>
                     </div>
-                    <div id="t_content" style="line-height:1.8;"></div>
+                    <div id="t_content" style="line-height:1.8;margin:12px 0;"></div>
                     <div id="timeArea" style="margin:15px 0;padding:10px 0;border-top:1px solid #eee;">
                         <div>报名开始：<span id="t_st"></span></div>
                         <div>投标截止：<span id="t_et"></span></div>
@@ -113,13 +125,31 @@
                     </div>
                     <div style="margin-bottom:12px;">
                         <label>公告内容</label>
-                        <div style="display:flex;gap:6px;padding:6px 8px;background:#f7f7f7;border:1px solid #eee;border-radius:4px;margin-bottom:4px;">
-                            <button type="button" class="btn btn-gray" onclick="eCmd('bold')" style="padding:2px 10px;">B</button>
-                            <button type="button" class="btn btn-gray" onclick="eCmd('italic')" style="padding:2px 10px;">I</button>
-                            <span style="color:#ddd;">|</span>
-                            <button type="button" class="btn btn-gray" onclick="eAlign('left')" style="padding:2px 10px;">左对齐</button>
-                            <button type="button" class="btn btn-gray" onclick="eAlign('center')" style="padding:2px 10px;">居中</button>
-                            <button type="button" class="btn btn-gray" onclick="eAlign('right')" style="padding:2px 10px;">右对齐</button>
+                        <div class="editor-toolbar">
+                            <span class="tb-group-label">文字</span>
+                            <button type="button" class="btn" style="padding:3px 12px;font-weight:bold;" onclick="eCmd('bold')">B</button>
+                            <button type="button" class="btn" style="padding:3px 12px;font-style:italic;" onclick="eCmd('italic')">I</button>
+                            <button type="button" class="btn" style="padding:3px 12px;" onclick="eClearFormat()">清除格式</button>
+                            <span class="tb-sep"></span>
+                            <span class="tb-group-label">对齐</span>
+                            <button type="button" class="btn" style="padding:3px 12px;" onclick="eAlign('left')">左对齐</button>
+                            <button type="button" class="btn" style="padding:3px 12px;" onclick="eAlign('center')">居中</button>
+                            <button type="button" class="btn" style="padding:3px 12px;" onclick="eAlign('right')">右对齐</button>
+                            <span class="tb-sep"></span>
+                            <span class="tb-group-label">表格</span>
+                            <div class="tb-group">
+                                <button type="button" class="btn" style="padding:3px 12px;">表格操作 ▾</button>
+                                <div class="tb-dropdown">
+                                    <div class="tb-menu">
+                                        <button type="button" onclick="eInsertTable()">插入表格</button>
+                                        <button type="button" onclick="eAddRow()">加行</button>
+                                        <button type="button" onclick="eAddCol()">加列</button>
+                                        <button type="button" onclick="eDelRow()">删行</button>
+                                        <button type="button" onclick="eDelCol()">删列</button>
+                                        <button type="button" onclick="eDelTable()">删除表格</button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <div id="e_content" contenteditable="true" style="min-height:150px;border:1px solid #ccc;border-radius:4px;padding:8px;line-height:1.8;"></div>
                     </div>
@@ -276,6 +306,115 @@
         const mp = {"left":"JustifyLeft","center":"JustifyCenter","right":"JustifyRight"};
         document.execCommand(mp[a] || "JustifyLeft", false, null);
         document.getElementById("e_content").focus();
+    }
+    function eClearFormat(){
+        document.execCommand("removeFormat", false, null);
+        document.getElementById("e_content").focus();
+    }
+    function eInsertTable(){
+        const html = '<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;margin:8px 0;"><tr><td>&nbsp;</td><td>&nbsp;</td></tr><tr><td>&nbsp;</td><td>&nbsp;</td></tr></table>';
+        document.execCommand("insertHTML", false, html);
+        document.getElementById("e_content").focus();
+    }
+    // 获取光标所在表格
+    function eGetTable(){
+        const sel = window.getSelection();
+        if(!sel || !sel.rangeCount) return null;
+        let node = sel.anchorNode;
+        if(node && node.nodeType === 3) node = node.parentNode;
+        while(node && node !== document.body){
+            if(node.tagName === "TABLE") return node;
+            node = node.parentNode;
+        }
+        return null;
+    }
+    // 表格加行
+    function eAddRow(){
+        const tb = eGetTable();
+        if(!tb){ alert("请先点击表格内的任意位置"); return; }
+        const cols = tb.rows[0] ? tb.rows[0].cells.length : 2;
+        const row = tb.insertRow(-1);
+        for(let i=0;i<cols;i++){
+            const cell = row.insertCell(-1);
+            cell.innerHTML = "&nbsp;";
+            cell.style.border = "1px solid #ccc";
+            cell.style.padding = "6px";
+        }
+        tb.style.borderCollapse = "collapse";
+        tb.setAttribute("border","1");
+        document.getElementById("e_content").focus();
+    }
+    // 表格加列
+    function eAddCol(){
+        const tb = eGetTable();
+        if(!tb){ alert("请先点击表格内的任意位置"); return; }
+        for(let i=0;i<tb.rows.length;i++){
+            const cell = tb.rows[i].insertCell(-1);
+            cell.innerHTML = "&nbsp;";
+            cell.style.border = "1px solid #ccc";
+            cell.style.padding = "6px";
+        }
+        tb.style.borderCollapse = "collapse";
+        tb.setAttribute("border","1");
+        document.getElementById("e_content").focus();
+    }
+    // 定位光标所在行
+    function eGetRow(){
+        const sel = window.getSelection();
+        if(!sel || !sel.rangeCount) return null;
+        let node = sel.anchorNode;
+        if(node && node.nodeType === 3) node = node.parentNode;
+        while(node && node !== document.body){
+            if(node.tagName === "TR") return node;
+            node = node.parentNode;
+        }
+        return null;
+    }
+    // 定位光标所在单元格
+    function eGetCell(){
+        const sel = window.getSelection();
+        if(!sel || !sel.rangeCount) return null;
+        let node = sel.anchorNode;
+        if(node && node.nodeType === 3) node = node.parentNode;
+        while(node && node !== document.body){
+            if(node.tagName === "TD" || node.tagName === "TH") return node;
+            node = node.parentNode;
+        }
+        return null;
+    }
+    // 删除光标所在行
+    function eDelRow(){
+        const tb = eGetTable();
+        if(!tb){ alert("请先点击表格内的任意位置"); return; }
+        const tr = eGetRow();
+        if(!tr){ alert("请先点击要删除的那一行"); return; }
+        if(tb.rows.length <= 1){ alert("表格至少保留一行"); return; }
+        tb.deleteRow(tr.rowIndex);
+        document.getElementById("e_content").focus();
+    }
+    // 删除光标所在列
+    function eDelCol(){
+        const tb = eGetTable();
+        if(!tb){ alert("请先点击表格内的任意位置"); return; }
+        const td = eGetCell();
+        if(!td){ alert("请先点击要删除的那一列中的任意单元格"); return; }
+        if(tb.rows[0].cells.length <= 1){ alert("表格至少保留一列"); return; }
+        const idx = td.cellIndex;
+        for(let i=0;i<tb.rows.length;i++){
+            if(tb.rows[i].cells[idx]){
+                tb.rows[i].deleteCell(idx);
+            }
+        }
+        document.getElementById("e_content").focus();
+    }
+    // 删除整个表格
+    function eDelTable(){
+        const tb = eGetTable();
+        if(!tb){ alert("请先点击表格内的任意位置"); return; }
+        if(confirm("确定删除该表格吗？")){
+            tb.remove();
+            document.getElementById("e_content").focus();
+        }
     }
     async function saveEdit(){
         const ec = document.getElementById("e_content");
