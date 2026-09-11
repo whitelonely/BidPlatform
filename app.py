@@ -19,7 +19,14 @@ SECRET_KEY = "procurement-secret-key-2026"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 120
 app = FastAPI(title="采购管理平台")
-app.mount("/static", StaticFiles(directory="static"), name="static")
+_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# 静态资源由显式路由返回（Vercel Serverless 下 StaticFiles mount 不生效，统一走 FastAPI 路由）
+@app.get("/static/{path:path}")
+async def static_file(path: str):
+    _full = os.path.normpath(os.path.join(_BASE_DIR, "static", path))
+    if not _full.startswith(os.path.join(_BASE_DIR, "static")) or not os.path.isfile(_full):
+        raise HTTPException(status_code=404, detail="Not Found")
+    return FileResponse(_full)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 # Vercel Serverless 环境文件系统只读（仅 /tmp 可写），自动切换数据目录；本地开发仍用项目目录下 proc.db / uploads
 IS_VERCEL = bool(os.environ.get("VERCEL"))
