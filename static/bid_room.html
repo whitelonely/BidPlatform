@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>开标室 - 采购管理平台</title>
+    <link rel="stylesheet" href="../static/css.css">
+</head>
+<body>
+<div class="main-container">
+    <div class="top-nav">
+        <div class="nav-inner">
+            <div class="nav-left">
+                <div class="nav-logo">采购管理平台</div>
+                <div class="nav-links" id="navLinks">
+                    <a href="/">首页</a>
+                    <a href="/notice">采购信息</a>
+                    <a href="/announce">平台通知</a>
+                    <a href="/policy">政策法规</a>
+                    <a href="/guide">业务指南</a>
+                    <!-- 动态追加业务菜单 -->
+                </div>
+            </div>
+            <div class="nav-right">
+                <span id="userWrap" style="display:none;position:relative;cursor:pointer;">
+                    <span id="userShow"></span>
+                    <div id="userMenu" style="display:none;position:absolute;right:0;top:100%;background:#fff;border:1px solid #ddd;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.15);z-index:999;min-width:150px;padding:6px 0;">
+                        <div id="menuRole" style="padding:8px 14px;color:#555;font-size:13px;border-bottom:1px solid #f0f0f0;"></div>
+                        <a href="/profile" id="menuProfile" style="display:none;padding:8px 14px;color:#1f4e99;text-decoration:none;white-space:nowrap;">个人中心</a>
+                    </div>
+                </span>
+                <a id="loginBtn" href="/login">登录/注册</a>
+                <button id="logoutBtn" onclick="logout()" style="display:none">退出登录</button>
+            </div>
+        </div>
+    </div>
+    <div class="wrap">
+        <!-- 项目列表区（无 project_id 参数时显示） -->
+        <div class="block" id="roomListBlock">
+            <div class="block-title">我的开标项目</div>
+            <div class="panel">
+                <div id="msgBoxList"></div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>项目编号</th>
+                            <th>项目名称</th>
+                            <th>开标时间</th>
+                            <th>状态</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="roomListBody">
+                        <tr><td colspan="6" style="text-align:center;color:#999;">加载中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <!-- 开标室内容区（有 project_id 参数时显示） -->
+        <div class="block" id="roomDetailBlock" style="display:none;">
+            <div class="block-title">开标室</div>
+            <div class="panel">
+                <div id="msgBox"></div>
+                <div id="noRoomPermission" style="color:red;display:none;">您没有权限进入该项目开标室</div>
+                <div id="roomContent" style="display:none;">
+                    <h3>项目：<span id="roomProjectName"></span></h3>
+                    <p>项目编号：<span id="roomProjectSn"></span></p>
+                    <p>开标状态：<span id="roomStatus"></span></p>
+                    <hr>
+                    <!-- 非供应方：参与供应方及申报材料 -->
+                    <div id="supplierAreaAll">
+                        <h4>参与供应方及申报材料</h4>
+                        <table style="width:100%;border-collapse: collapse;margin:10px 0;">
+                            <thead>
+                                <tr style="background:#f5f5f5;">
+                                    <th style="border:1px solid #ddd;padding:8px;text-align:left;">供应方账号</th>
+                                    <th style="border:1px solid #ddd;padding:8px;text-align:left;">姓名</th>
+                                    <th style="border:1px solid #ddd;padding:8px;text-align:left;">报名状态</th>
+                                    <th style="border:1px solid #ddd;padding:8px;text-align:left;">投标文件</th>
+                                    <th style="border:1px solid #ddd;padding:8px;text-align:left;">投标报价</th>
+                                    <th style="border:1px solid #ddd;padding:8px;text-align:left;">二次报价</th>
+                                    <th style="border:1px solid #ddd;padding:8px;text-align:left;">结果确认</th>
+                                </tr>
+                            </thead>
+                            <tbody id="supplierList">
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- 供应方：我的投标信息 -->
+                    <div id="myBidArea" style="display:none;">
+                        <h4>我的投标信息</h4>
+                        <table style="width:100%;border-collapse: collapse;margin:10px 0;">
+                            <tbody id="myBidList">
+                            </tbody>
+                        </table>
+                        <div id="secondBidBox" style="margin-top:12px;display:none;">
+                            <h4>二次报价</h4>
+                            <input type="number" id="secondBidInput" min="0" step="0.01" placeholder="请输入二次报价（元）" style="width:220px;padding:6px;border:1px solid #ccc;border-radius:4px;">
+                            <button class="btn" id="secondBidBtn" style="margin-left:8px;">提交二次报价</button>
+                            <span id="secondBidShown" style="color:#1f4e99;margin-left:10px;"></span>
+                        </div>
+                        <div style="margin-top:12px;">
+                            <h4>结果确认</h4>
+                            <button class="btn" id="confirmResultBtn">确认开标结果</button>
+                            <span id="resultShown" style="color:#1f4e99;margin-left:10px;"></span>
+                        </div>
+                    </div>
+                    <hr>
+                    <!-- 开标记录：非供应方可编辑，供应方只读 -->
+                    <div id="bidRecordArea">
+                        <h4>开标记录</h4>
+                        <textarea id="bidRecord" rows="6" style="width:100%;box-sizing:border-box;"></textarea>
+                        <div id="bidRecordReadonly" style="white-space:pre-line;line-height:1.8;display:none;border:1px solid #eee;padding:10px;"></div>
+                        <div style="margin-top:12px;" id="recordBtnWrap">
+                            <button class="btn" id="saveRecordBtn">保存开标记录</button>
+                        </div>
+                    </div>
+                    <hr>
+                    <h4>开标流程</h4>
+                    <div id="flowList" style="max-height:280px;overflow-y:auto;border:1px solid #eee;padding:10px;margin:10px 0;background:#fafafa;">
+                        <div class="empty-tip">加载中...</div>
+                    </div>
+                    <div id="flowAddBox" style="display:none;margin-bottom:10px;">
+                        <textarea id="flowInput" rows="2" style="width:100%;box-sizing:border-box;padding:6px;" placeholder="发布开标流程/公告信息..."></textarea>
+                        <button class="btn" id="flowAddBtn" style="margin-top:6px;">发布流程信息</button>
+                    </div>
+                    <button class="btn" id="closeRoomBtn" style="display:none;background:#c0392b;color:#fff;margin-bottom:10px;">结束开标流程</button>
+                    <div style="margin-top:12px;">
+                        <a class="btn btn-gray" href="/bid_room" style="text-decoration:none;">返回项目列表</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="footer">
+    技术支持：KAI<br>
+    Copyright© 采购管理平台 @KAI 版权所有
+</div>
+<script>
+    function getAuthHeader(){
+        const token = localStorage.getItem("token");
+        if(token){
+            return {"Authorization":"Bearer "+token}
+        }
+        return {};
+    }
+    function logout(){
+        fetch("/logout", {
+            method:"POST",
+            credentials:"include",
+            headers:{...getAuthHeader()}
+        })
+        .then(res=>{
+            localStorage.removeItem("token");
+            if(res.ok){
+                location.href="/";
+            }
+        })
+    }
+    function showMsg(domId, text, tp="error"){
+        const dom = document.getElementById(domId);
+        if(!dom) return;
+        dom.innerHTML=`<div class="msg ${tp}">${text}</div>`
+        setTimeout(()=>{dom.innerHTML=""},3000)
+    }
+    function getUrlParam(name){
+        const params = new URLSearchParams(location.search);
+        return params.get(name);
+    }
+    let currentUserRole = "";
+    let currentUsername = "";
+
+    // 加载当前用户有权限的项目列表
+    async function loadRoomList(){
+        const body = document.getElementById("roomListBody");
+        try{
+            const res = await fetch("/api/bid_room_list", {
+                credentials:"include",
+                headers:{...getAuthHeader()}
+            });
+            if(res.status === 401 || res.status === 403){
+                body.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#999;">请先登录后查看</td></tr>`;
+                return;
+            }
+            const ret = await res.json();
+            const list = (ret && ret.data) || [];
+            if(list.length === 0){
+                body.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#999;">暂无您可参与的开标项目</td></tr>`;
+                return;
+            }
+            let html = "";
+            list.forEach(item=>{
+                html += `<tr>
+                    <td>${item.project_sn || "-"}</td>
+                    <td>${item.title}</td>
+                    <td>${item.open_time || "-"}</td>
+                    <td>${item.status_text || item.status || "normal"}</td>
+                    <td><a class="btn" href="/bid_room?project_id=${item.id}" style="text-decoration:none;">进入开标室</a></td>
+                </tr>`;
+            })
+            body.innerHTML = html;
+        }catch(err){
+            body.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#999;">数据加载失败</td></tr>`;
+        }
+    }
+
+    // 非供应方：渲染全部供应方表格
+    function renderSupplierAll(list){
+        let html = "";
+        (list || []).forEach(item=>{
+            let fileHtml = "未上传";
+            if(item.file_name){
+                fileHtml = `${item.file_name}`;
+                if(item.file_url){
+                    const tk = (localStorage.getItem("token") || "");
+                    fileHtml += ` <a href="${item.file_url}?token=${encodeURIComponent(tk)}" target="_blank" style="color:#1f4e99;">预览</a>`;
+                }
+            }
+            html += `<tr>
+                <td style="border:1px solid #ddd;padding:8px;">${item.username}</td>
+                <td style="border:1px solid #ddd;padding:8px;">${item.name || ""}</td>
+                <td style="border:1px solid #ddd;padding:8px;">${item.apply_status || "已报名"}</td>
+                <td style="border:1px solid #ddd;padding:8px;">${fileHtml}</td>
+                <td style="border:1px solid #ddd;padding:8px;">${item.price != null ? item.price + " 元" : "未报价"}</td>
+                <td style="border:1px solid #ddd;padding:8px;">${item.second_price != null ? item.second_price + " 元" : "-"}</td>
+                <td style="border:1px solid #ddd;padding:8px;">${item.result || "未确认"}</td>
+            </tr>`;
+        })
+        document.getElementById("supplierList").innerHTML = html;
+    }
+
+    // 供应方：渲染自己的投标信息
+    function renderMyBid(list, roomData){
+        const mine = (list || []).find(item=>item.username === currentUsername) || {};
+        const rows = [
+            ["报名状态", mine.apply_status || "已报名"],
+            ["投标文件", mine.file_name ? mine.file_name + (mine.file_url ? "（可预览）" : "") : "未上传"],
+            ["投标报价", mine.price != null ? mine.price + " 元" : "未报价"],
+            ["二次报价", mine.second_price != null ? mine.second_price + " 元" : "未报价"],
+            ["结果确认", mine.result || "未确认"]
+        ];
+        let html = "";
+        rows.forEach(r=>{
+            html += `<tr>
+                <td style="border:1px solid #ddd;padding:8px;background:#f5f5f5;width:120px;">${r[0]}</td>
+                <td style="border:1px solid #ddd;padding:8px;">${r[1]}</td>
+            </tr>`;
+        })
+        document.getElementById("myBidList").innerHTML = html;
+
+        // 二次报价：开标中且未结束、且未提交过、且未确认结果才可操作（仅限一次）
+        const secondBox = document.getElementById("secondBidBox");
+        secondBox.style.display = "block";
+        const alreadySecond = mine.second_price != null;
+        const alreadyConfirm = !!mine.result;
+        const canBid = roomData && roomData.is_open && roomData.status !== "closed";
+        const canSecond = canBid && !alreadySecond && !alreadyConfirm;
+        document.getElementById("secondBidInput").disabled = !canSecond;
+        document.getElementById("secondBidBtn").disabled = !canSecond;
+        if(alreadySecond){
+            document.getElementById("secondBidShown").innerText = `已提交：${mine.second_price} 元（只能提交一次）`;
+        }else if(alreadyConfirm){
+            document.getElementById("secondBidShown").innerText = "已确认开标结果，不能修改二次报价";
+        }else if(!canBid){
+            document.getElementById("secondBidShown").innerText = "（开标未开始或已结束，不能二次报价）";
+        }else{
+            document.getElementById("secondBidShown").innerText = "";
+        }
+        // 结果确认：确认后不可再操作
+        const confirmBtn = document.getElementById("confirmResultBtn");
+        confirmBtn.disabled = !canBid || alreadyConfirm;
+        confirmBtn.innerText = alreadyConfirm ? "已确认" : "确认开标结果";
+        document.getElementById("resultShown").innerText = mine.result || "";
+    }
+
+    // 开标室实时刷新：流程/状态/供应方表格自动更新（不覆盖正在编辑的开标记录）
+    let liveTimer = null;
+    function startLiveRefresh(){
+        if(liveTimer) clearInterval(liveTimer);
+        const projectId = getUrlParam("project_id");
+        if(!projectId) return;
+        liveTimer = setInterval(async ()=>{
+            if(document.hidden) return;
+            try{
+                const res = await fetch(`/api/bid_room?project_id=${projectId}`,{
+                    credentials:"include",
+                    headers:{...getAuthHeader()}
+                });
+                const ret = await res.json();
+                if(ret.code !== 200) return;
+                const d = ret.data;
+                document.getElementById("roomStatus").innerText = d.status_text || d.status;
+                if(currentUserRole === "supplier"){
+                    renderMyBid(d.supplier_list, d);
+                    document.getElementById("bidRecordReadonly").innerText = d.record || "暂无开标记录";
+                }else{
+                    renderSupplierAll(d.supplier_list);
+                }
+                loadFlow(projectId, d);
+            }catch(err){}
+        }, 4000);
+    }
+
+    async function loadRoomInfo(){
+        const projectId = getUrlParam("project_id");
+        try{
+            const res = await fetch(`/api/bid_room?project_id=${projectId}`,{
+                credentials:"include",
+                headers:{...getAuthHeader()}
+            });
+            const ret = await res.json();
+            if(ret.code !== 200){
+                document.getElementById("noRoomPermission").style.display="block";
+                return;
+            }
+            //有权限渲染页面
+            document.getElementById("roomContent").style.display="block";
+            document.getElementById("roomProjectName").innerText = ret.data.title;
+            document.getElementById("roomProjectSn").innerText = ret.data.project_sn || "-";
+            document.getElementById("roomStatus").innerText = ret.data.status_text || ret.data.status;
+
+            const isSupplier = currentUserRole === "supplier";
+            if(isSupplier){
+                // 供应方：我的投标信息
+                document.getElementById("supplierAreaAll").style.display = "none";
+                document.getElementById("myBidArea").style.display = "block";
+                // 开标记录只读
+                document.getElementById("bidRecord").style.display = "none";
+                document.getElementById("recordBtnWrap").style.display = "none";
+                document.getElementById("bidRecordReadonly").style.display = "block";
+                document.getElementById("bidRecordReadonly").innerText = ret.data.record || "暂无开标记录";
+                renderMyBid(ret.data.supplier_list, ret.data);
+            }else{
+                // 非供应方：全部供应方 + 可编辑开标记录
+                document.getElementById("supplierAreaAll").style.display = "block";
+                document.getElementById("myBidArea").style.display = "none";
+                document.getElementById("bidRecord").style.display = "block";
+                document.getElementById("recordBtnWrap").style.display = "block";
+                document.getElementById("bidRecordReadonly").style.display = "none";
+                document.getElementById("bidRecord").value = ret.data.record || "";
+                renderSupplierAll(ret.data.supplier_list);
+            }
+            // 开标流程：加载动态 + 按权限显示发布框/结束按钮
+            loadFlow(projectId, ret.data);
+        }catch(err){
+            showMsg("msgBox","加载开标室信息失败");
+        }
+    }
+    // 加载开标流程动态
+    async function loadFlow(projectId, roomData){
+        const flowDom = document.getElementById("flowList");
+        try{
+            const res = await fetch(`/api/bid_flow_list?notice_id=${projectId}`,{
+                credentials:"include",
+                headers:{...getAuthHeader()}
+            });
+            const ret = await res.json();
+            const list = (ret && ret.data) || [];
+            if(list.length === 0){
+                flowDom.innerHTML = `<div class="empty-tip">暂无开标流程信息</div>`;
+            }else{
+                let html = "";
+                list.forEach(item=>{
+                    html += `<div style="margin-bottom:8px;padding-bottom:8px;border-bottom:1px dashed #ddd;">
+                        <span style="color:#888;font-size:12px;">${item.create_time} · ${item.name || ""}</span>
+                        <div style="margin-top:2px;">${item.content}</div>
+                    </div>`;
+                })
+                flowDom.innerHTML = html;
+            }
+            // 权限控制
+            if(roomData && roomData.can_publish){
+                document.getElementById("flowAddBox").style.display = "block";
+            }
+            if(roomData && roomData.can_close){
+                document.getElementById("closeRoomBtn").style.display = "inline-block";
+            }
+        }catch(err){
+            flowDom.innerHTML = `<div class="empty-tip">流程加载失败</div>`;
+        }
+    }
+    // 发布开标流程
+    async function publishFlow(){
+        const projectId = getUrlParam("project_id");
+        const content = document.getElementById("flowInput").value.trim();
+        if(!content){ showMsg("msgBox","请输入流程内容"); return; }
+        try{
+            const res = await fetch("/api/bid_flow_add",{
+                method:"POST",
+                credentials:"include",
+                headers:{
+                    "Content-Type":"application/json",
+                    ...getAuthHeader()
+                },
+                body:JSON.stringify({notice_id:projectId, record:content})
+            })
+            const ret = await res.json();
+            if(ret.code===200){
+                showMsg("msgBox","流程信息发布成功","success");
+                document.getElementById("flowInput").value="";
+                loadFlow(projectId, null);
+            }else{
+                showMsg("msgBox",ret.msg || ret.detail || "发布失败");
+            }
+        }catch(e){
+            showMsg("msgBox","网络异常");
+        }
+    }
+    // 结束开标流程
+    async function closeRoom(){
+        const projectId = getUrlParam("project_id");
+        if(!confirm("确定结束该项目的开标流程吗？结束后状态将变为「已结束」")) return;
+        try{
+            const res = await fetch("/api/bid_room_close",{
+                method:"POST",
+                credentials:"include",
+                headers:{
+                    "Content-Type":"application/json",
+                    ...getAuthHeader()
+                },
+                body:JSON.stringify({notice_id:projectId, record:""})
+            })
+            const ret = await res.json();
+            if(ret.code===200){
+                showMsg("msgBox","开标流程已结束","success");
+                setTimeout(()=>{ location.reload(); }, 800);
+            }else{
+                showMsg("msgBox",ret.msg || ret.detail || "操作失败");
+            }
+        }catch(e){
+            showMsg("msgBox","网络异常");
+        }
+    }
+    // 供应方提交二次报价
+    async function submitSecondBid(){
+        const projectId = getUrlParam("project_id");
+        const price = parseFloat(document.getElementById("secondBidInput").value);
+        if(!price || price <= 0){ showMsg("msgBox","请输入有效的二次报价"); return; }
+        const fd = new FormData();
+        fd.append("second_price", price);
+        try{
+            const res = await fetch(`/api/second_bid/${projectId}`,{
+                method:"POST",
+                credentials:"include",
+                headers:{...getAuthHeader()},
+                body:fd
+            })
+            const ret = await res.json();
+            if(ret.code===200){
+                showMsg("msgBox","二次报价提交成功","success");
+                document.getElementById("secondBidInput").value="";
+                loadRoomInfo();
+            }else{
+                showMsg("msgBox",ret.msg || ret.detail || "提交失败");
+            }
+        }catch(e){
+            showMsg("msgBox","网络异常");
+        }
+    }
+    // 供应方结果确认
+    async function confirmResult(){
+        const projectId = getUrlParam("project_id");
+        if(!confirm("确定确认本次开标结果吗？")) return;
+        const fd = new FormData();
+        fd.append("result", "已确认");
+        try{
+            const res = await fetch(`/api/confirm_result/${projectId}`,{
+                method:"POST",
+                credentials:"include",
+                headers:{...getAuthHeader()},
+                body:fd
+            })
+            const ret = await res.json();
+            if(ret.code===200){
+                showMsg("msgBox","结果确认成功","success");
+                loadRoomInfo();
+            }else{
+                showMsg("msgBox",ret.msg || ret.detail || "操作失败");
+            }
+        }catch(e){
+            showMsg("msgBox","网络异常");
+        }
+    }
+    //保存开标记录
+    document.getElementById("saveRecordBtn").addEventListener("click",async ()=>{
+        const projectId = getUrlParam("project_id");
+        const record = document.getElementById("bidRecord").value.trim();
+        try{
+            const res = await fetch("/api/save_bid_record",{
+                method:"POST",
+                credentials:"include",
+                headers:{
+                    "Content-Type":"application/json",
+                    ...getAuthHeader()
+                },
+                body:JSON.stringify({project_id:projectId, record:record})
+            })
+            const ret = await res.json();
+            if(ret.code===200){
+                showMsg("msgBox","开标记录保存成功","success");
+            }else{
+                showMsg("msgBox",ret.msg || "保存失败");
+            }
+        }catch(e){
+            showMsg("msgBox","网络异常");
+        }
+    })
+    document.getElementById("flowAddBtn").addEventListener("click", publishFlow);
+    document.getElementById("closeRoomBtn").addEventListener("click", closeRoom);
+    document.getElementById("secondBidBtn").addEventListener("click", submitSecondBid);
+    document.getElementById("confirmResultBtn").addEventListener("click", confirmResult);
+    async function checkLoginStatus(){
+        try{
+            const res = await fetch("/api/user", {
+                credentials:"include",
+                headers:{...getAuthHeader()}
+            });
+            const user = await res.json();
+            const userShow = document.getElementById("userShow");
+            const loginBtn = document.getElementById("loginBtn");
+            const logoutBtn = document.getElementById("logoutBtn");
+            const navLinks = document.getElementById("navLinks");
+            let roleText = "";
+            currentUserRole = user.role;
+            currentUsername = user.username;
+            if(user.role === "super_admin"){
+                roleText = "超级管理员";
+            }else if(user.role === "agent"){
+                roleText = "代理机构";
+            }else if(user.role === "purchaser"){
+                roleText = "采购方";
+            }else if(user.role === "supplier"){
+                roleText = "供应方";
+            }
+            navLinks.querySelectorAll(".dynamic-menu").forEach(el=>el.remove());
+
+            if(user && user.username){
+                userShow.innerText = `欢迎，${user.username}`;
+                userShow.style.fontWeight = "bold";
+                userShow.style.color = "#1f4e99";
+                const _roleMap = {"supplier":"供应方","purchaser":"采购方","agent":"代理机构","super_admin":"超级管理员"};
+                document.getElementById("userWrap").style.display = "inline-block";
+                document.getElementById("menuRole").innerText = `【${_roleMap[user.role] || user.role}】`;
+                document.getElementById("menuProfile").style.display = ["supplier","purchaser","agent"].includes(user.role) ? "block" : "none";
+                const _uw = document.getElementById("userWrap");
+                const _um = document.getElementById("userMenu");
+                _uw.onmouseenter = ()=>{ _um.style.display = "block"; };
+                _uw.onmouseleave = ()=>{ _um.style.display = "none"; };
+                loginBtn.style.display = "none";
+                logoutBtn.style.display = "block";
+                // 供应方：开标室
+                if(user.role === "supplier"){
+                    navLinks.insertAdjacentHTML("beforeend",`<a href="/bid_room" class="dynamic-menu active">开标室</a>`);
+                }
+                // 采购方/代理/超管：发布公告 + 开标室
+                if(["purchaser","agent","super_admin"].includes(user.role)){
+                    navLinks.insertAdjacentHTML("beforeend",`<a href="/publish" class="dynamic-menu">发布公告</a>`);
+                    navLinks.insertAdjacentHTML("beforeend",`<a href="/bid_room" class="dynamic-menu active">开标室</a>`);
+                }
+                if(user.role === "super_admin"){
+                    navLinks.insertAdjacentHTML("beforeend",`<a href="/user_manage" class="dynamic-menu">账号管理</a>`);
+                }
+            }else{
+                userShow.innerText = "";
+                loginBtn.style.display = "block";
+                logoutBtn.style.display = "none";
+            }
+        }catch(err){
+            console.error("用户信息加载失败",err);
+        }
+    }
+    window.onload = async function(){
+        await checkLoginStatus();
+        const projectId = getUrlParam("project_id");
+        if(projectId){
+            document.getElementById("roomListBlock").style.display = "none";
+            document.getElementById("roomDetailBlock").style.display = "block";
+            loadRoomInfo();
+            startLiveRefresh();
+        }else{
+            document.getElementById("roomListBlock").style.display = "block";
+            document.getElementById("roomDetailBlock").style.display = "none";
+            loadRoomList();
+        }
+    }
+</script>
+</body>
+</html>

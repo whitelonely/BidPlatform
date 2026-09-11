@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>公告详情 - 采购管理平台</title>
+    <link rel="stylesheet" href="../static/css.css">
+</head>
+<body>
+<div class="main-container">
+    <div class="top-nav">
+        <div class="nav-inner">
+            <div class="nav-left">
+                <div class="nav-logo">采购管理平台</div>
+                <div class="nav-links" id="navLinks">
+                    <a href="/">首页</a>
+                    <a href="/notice">采购信息</a>
+                    <a href="/announce">平台通知</a>
+                    <a href="/policy">政策法规</a>
+                    <a href="/guide">业务指南</a>
+                    <!-- 动态追加业务菜单 -->
+                </div>
+            </div>
+            <div class="nav-right">
+                <span id="userWrap" style="display:none;position:relative;cursor:pointer;">
+                    <span id="userShow"></span>
+                    <div id="userMenu" style="display:none;position:absolute;right:0;top:100%;background:#fff;border:1px solid #ddd;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.15);z-index:999;min-width:150px;padding:6px 0;">
+                        <div id="menuRole" style="padding:8px 14px;color:#555;font-size:13px;border-bottom:1px solid #f0f0f0;"></div>
+                        <a href="/profile" id="menuProfile" style="display:none;padding:8px 14px;color:#1f4e99;text-decoration:none;white-space:nowrap;">个人中心</a>
+                    </div>
+                </span>
+                <a id="loginBtn" href="/login">登录/注册</a>
+                <button id="logoutBtn" onclick="logout()" style="display:none">退出登录</button>
+            </div>
+        </div>
+    </div>
+    <div class="wrap">
+        <div class="block">
+            <div style="margin-bottom:10px;">
+                <a href="javascript:history.back()" style="text-decoration:none;color:#1f4e99;">← 返回上一页</a>
+            </div>
+            <div id="msgBox"></div>
+            <div class="block-title" id="t_title"></div>
+            <div id="adminBar" style="display:none;margin:8px 0;">
+                <button class="btn" onclick="startEdit()">编辑公告</button>
+                <button class="btn" onclick="delNotice()" style="background:#c0392b;">删除公告</button>
+            </div>
+            <div class="panel">
+                <div id="viewBox">
+                    <div style="margin-bottom:8px;color:#888;font-size:13px;">
+                        <span>公告类型：<span id="t_type"></span></span>
+                        <span style="margin-left:16px;">发布时间：<span id="t_create"></span></span>
+                        <span style="margin-left:16px;" id="snWrap">项目编号：<span id="t_sn"></span></span>
+                    </div>
+                    <div id="t_content" style="line-height:1.8;"></div>
+                    <div id="timeArea" style="margin:15px 0;padding:10px 0;border-top:1px solid #eee;">
+                        <div>报名开始：<span id="t_st"></span></div>
+                        <div>投标截止：<span id="t_et"></span></div>
+                        <div>开标时间：<span id="t_ot"></span></div>
+                        <div>状态：<span id="t_status"></span></div>
+                    </div>
+                    <hr>
+                    <div id="attachArea">
+                        <h4>附件下载</h4>
+                        <div id="attachList"></div>
+                    </div>
+                    <hr>
+                    <div id="supplierArea" style="display:none;">
+                        <button class="btn" id="btnSignup" onclick="doSignup()">供应商报名</button>
+                        <button class="btn btn-gray" id="btnCancelSignup" onclick="cancelSignup()" style="display:none;margin-left:6px;">撤回报名</button>
+                        <div id="uploadBox" style="margin:10px 0;display:none;">
+                            <h4>上传投标文件</h4>
+                            <div style="margin:8px 0;">
+                                <label>投标报价（元）</label>
+                                <input type="number" id="bidPrice" min="0" step="0.01" placeholder="请输入投标报价" style="width:200px;padding:6px;border:1px solid #ccc;border-radius:4px;">
+                            </div>
+                            <input type="file" id="bidFile" accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.pdf,.txt">
+                            <button class="btn" id="btnUpload" onclick="uploadBid()">上传投标文件</button>
+                            <button class="btn btn-gray" id="btnCancelFile" onclick="cancelFile()" style="display:none;margin-left:6px;">撤回投标文件</button>
+                        </div>
+                        <button class="btn" id="btnGotoRoom" style="display:none;margin-top:8px;" onclick="gotoBidRoom()">进入开标室</button>
+                    </div>
+                </div>
+                <div id="editBox" style="display:none;">
+                    <div style="margin-bottom:8px;color:#888;font-size:13px;">编辑公告（修改后保存即可生效）</div>
+                    <div style="margin-bottom:12px;">
+                        <label>公告类型</label>
+                        <select id="e_type" onchange="updateEditRows()">
+                            <option value="purchase">采购公告</option>
+                            <option value="win">中标公告</option>
+                            <option value="change">变更公告</option>
+                            <option value="stop">终止公告</option>
+                            <option value="announce">平台通知</option>
+                            <option value="policy">政策法规</option>
+                            <option value="guide">业务指南</option>
+                        </select>
+                    </div>
+                    <div style="margin-bottom:12px;">
+                        <label>公告标题</label>
+                        <input type="text" id="e_title" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
+                    </div>
+                    <div id="e_snRow" style="margin-bottom:12px;">
+                        <label>项目编号</label>
+                        <input type="text" id="e_sn" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
+                    </div>
+                    <div id="e_timeRow" style="margin-bottom:12px;">
+                        <label>报名开始时间</label>
+                        <input type="datetime-local" id="e_st" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
+                        <label style="margin-top:8px;">投标截止时间</label>
+                        <input type="datetime-local" id="e_et" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
+                        <label style="margin-top:8px;">开标时间</label>
+                        <input type="datetime-local" id="e_ot" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
+                    </div>
+                    <div style="margin-bottom:12px;">
+                        <label>公告内容</label>
+                        <div style="display:flex;gap:6px;padding:6px 8px;background:#f7f7f7;border:1px solid #eee;border-radius:4px;margin-bottom:4px;">
+                            <button type="button" class="btn btn-gray" onclick="eCmd('bold')" style="padding:2px 10px;">B</button>
+                            <button type="button" class="btn btn-gray" onclick="eCmd('italic')" style="padding:2px 10px;">I</button>
+                            <span style="color:#ddd;">|</span>
+                            <button type="button" class="btn btn-gray" onclick="eAlign('left')" style="padding:2px 10px;">左对齐</button>
+                            <button type="button" class="btn btn-gray" onclick="eAlign('center')" style="padding:2px 10px;">居中</button>
+                            <button type="button" class="btn btn-gray" onclick="eAlign('right')" style="padding:2px 10px;">右对齐</button>
+                        </div>
+                        <div id="e_content" contenteditable="true" style="min-height:150px;border:1px solid #ccc;border-radius:4px;padding:8px;line-height:1.8;"></div>
+                    </div>
+                    <div style="margin-top:12px;">
+                        <button class="btn" onclick="saveEdit()">保存修改</button>
+                        <button class="btn btn-gray" onclick="cancelEdit()">取消</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="footer">
+    技术支持：KAI<br>
+    Copyright© 采购管理平台 @KAI 版权所有
+</div>
+<script>
+    function getAuthHeader(){
+        const token = localStorage.getItem("token");
+        if(token){
+            return {"Authorization":"Bearer "+token}
+        }
+        return {};
+    }
+    // 从路径提取公告ID（支持 /notice/5、/announce/5 等）
+    function getNoticeId(){
+        const pathArr = window.location.pathname.split("/");
+        return pathArr[pathArr.length - 1];
+    }
+    const projectTypes = ["purchase","win","change","stop"];
+    let nid = getNoticeId();
+    let noticeData=null;
+    let currentUser = null;
+    let hasSignup = false;
+    let hasFile = false;
+
+    async function checkLoginStatus(){
+        try{
+            const res = await fetch("/api/user", {
+                credentials:"include",
+                headers:{...getAuthHeader()}
+            });
+            currentUser = await res.json();
+            const userShow = document.getElementById("userShow");
+            const loginBtn = document.getElementById("loginBtn");
+            const logoutBtn = document.getElementById("logoutBtn");
+            const navLinks = document.getElementById("navLinks");
+
+            let roleText = "";
+            if(currentUser.role === "supplier") roleText = "供应方";
+            if(currentUser.role === "purchaser") roleText = "采购方";
+            if(currentUser.role === "agent") roleText = "代理机构";
+            if(currentUser.role === "super_admin") roleText = "超级管理员";
+
+            navLinks.querySelectorAll(".dynamic-menu").forEach(el=>el.remove());
+
+            if(currentUser && currentUser.username){
+                userShow.innerText = `欢迎，${currentUser.username}`;
+                userShow.style.fontWeight = "bold";
+                userShow.style.color = "#1f4e99";
+                const _roleMap = {"supplier":"供应方","purchaser":"采购方","agent":"代理机构","super_admin":"超级管理员"};
+                document.getElementById("userWrap").style.display = "inline-block";
+                document.getElementById("menuRole").innerText = `【${_roleMap[currentUser.role] || currentUser.role}】`;
+                document.getElementById("menuProfile").style.display = ["supplier","purchaser","agent"].includes(currentUser.role) ? "block" : "none";
+                const _uw = document.getElementById("userWrap");
+                const _um = document.getElementById("userMenu");
+                _uw.onmouseenter = ()=>{ _um.style.display = "block"; };
+                _uw.onmouseleave = ()=>{ _um.style.display = "none"; };
+                loginBtn.style.display = "none";
+                logoutBtn.style.display = "block";
+                // 供应方：开标室
+                if(currentUser.role === "supplier"){
+                    navLinks.insertAdjacentHTML("beforeend",`<a href="/bid_room" class="dynamic-menu">开标室</a>`);
+                }
+                // 采购方/代理/超管：发布公告 + 开标室
+                if(["purchaser","agent","super_admin"].includes(currentUser.role)){
+                    navLinks.insertAdjacentHTML("beforeend",`<a href="/publish" class="dynamic-menu">发布公告</a>`);
+                    navLinks.insertAdjacentHTML("beforeend",`<a href="/bid_room" class="dynamic-menu">开标室</a>`);
+                }
+                if(currentUser.role === "super_admin"){
+                    navLinks.insertAdjacentHTML("beforeend",`<a href="/user_manage" class="dynamic-menu">账号管理</a>`);
+                }
+                document.getElementById("adminBar").style.display = (currentUser && currentUser.role === "super_admin") ? "block" : "none";
+            }else{
+                userShow.innerText = "";
+                loginBtn.style.display = "block";
+                logoutBtn.style.display = "none";
+            }
+        }catch(err){
+            console.error("用户信息加载失败",err);
+        }
+    }
+
+    // 根据公告类型和用户角色，控制报名区显隐
+    function renderSupplierArea(){
+        if(!noticeData || !currentUser) return;
+        const isPurchase = noticeData.notice_type === "purchase";
+        const area = document.getElementById("supplierArea");
+        // 仅供应方 + 采购公告才显示报名区（中标/变更/终止等一律不显示）
+        if(currentUser.role !== "supplier" || !isPurchase){
+            area.style.display = "none";
+            return;
+        }
+        area.style.display = "block";
+        // 投标截止时间判断：截止后报名/上传/撤回全部拦截
+        const isDeadline = noticeData.end_time ? new Date() >= new Date(noticeData.end_time) : false;
+        if(hasSignup){
+            document.getElementById("btnSignup").innerText = "已报名";
+            document.getElementById("btnSignup").disabled = true;
+            // 已过投标截止：隐藏上传区域与撤回按钮，只保留进入开标室
+            document.getElementById("btnCancelSignup").style.display = isDeadline ? "none" : "inline-block";
+            document.getElementById("uploadBox").style.display = isDeadline ? "none" : "block";
+            document.getElementById("btnGotoRoom").style.display = "block";
+            document.getElementById("btnCancelFile").style.display = (!isDeadline && hasFile) ? "inline-block" : "none";
+        }else{
+            document.getElementById("btnSignup").innerText = isDeadline ? "报名已截止" : "供应商报名";
+            document.getElementById("btnSignup").disabled = isDeadline;
+            document.getElementById("btnCancelSignup").style.display = "none";
+            document.getElementById("uploadBox").style.display = "none";
+            document.getElementById("btnGotoRoom").style.display = "none";
+            document.getElementById("btnCancelFile").style.display = "none";
+        }
+    }
+
+    // ===== 管理员编辑/删除公告 =====
+    function updateEditRows(){
+        const tp = document.getElementById("e_type").value;
+        const isProj = ["purchase","win","change","stop"].includes(tp);
+        const isPur = tp === "purchase";
+        document.getElementById("e_snRow").style.display = isProj ? "block" : "none";
+        document.getElementById("e_timeRow").style.display = isPur ? "block" : "none";
+    }
+    function startEdit(){
+        document.getElementById("e_title").value = noticeData.title || "";
+        document.getElementById("e_type").value = noticeData.notice_type || "purchase";
+        document.getElementById("e_sn").value = noticeData.project_sn || "";
+        document.getElementById("e_st").value = noticeData.start_time || "";
+        document.getElementById("e_et").value = noticeData.end_time || "";
+        document.getElementById("e_ot").value = noticeData.open_time || "";
+        document.getElementById("e_content").innerHTML = noticeData.content || "";
+        updateEditRows();
+        document.getElementById("viewBox").style.display = "none";
+        document.getElementById("editBox").style.display = "block";
+    }
+    function cancelEdit(){
+        document.getElementById("editBox").style.display = "none";
+        document.getElementById("viewBox").style.display = "block";
+    }
+    function eCmd(c){
+        document.execCommand(c, false, null);
+        document.getElementById("e_content").focus();
+    }
+    function eAlign(a){
+        const mp = {"left":"JustifyLeft","center":"JustifyCenter","right":"JustifyRight"};
+        document.execCommand(mp[a] || "JustifyLeft", false, null);
+        document.getElementById("e_content").focus();
+    }
+    async function saveEdit(){
+        const ec = document.getElementById("e_content");
+        const title = document.getElementById("e_title").value.trim();
+        if(!title){ showMsg("公告标题不能为空","error"); return; }
+        if(!ec.innerText.trim()){ showMsg("公告内容不能为空","error"); return; }
+        if(!confirm("确认保存对公告的修改？")) return;
+        try{
+            const r = await fetch("/api/update_notice",{
+                method:"POST",
+                headers:{...getAuthHeader(),"Content-Type":"application/json"},
+                credentials:"include",
+                body:JSON.stringify({
+                    id: nid,
+                    title: title,
+                    notice_type: document.getElementById("e_type").value,
+                    project_sn: document.getElementById("e_sn").value.trim(),
+                    start_time: document.getElementById("e_st").value,
+                    end_time: document.getElementById("e_et").value,
+                    open_time: document.getElementById("e_ot").value,
+                    content: ec.innerHTML.trim()
+                })
+            });
+            const d = await r.json();
+            if(d.code === 200){
+                showMsg(d.msg || "修改成功","success");
+                cancelEdit();
+                loadDetail();
+            }else{
+                showMsg(d.msg || d.detail || "修改失败","error");
+            }
+        }catch(err){
+            showMsg("网络请求异常","error");
+        }
+    }
+    async function delNotice(){
+        if(!confirm("确定删除该公告吗？删除后不可恢复，其报名、投标、开标相关数据将一并删除。")) return;
+        try{
+            const r = await fetch("/api/delete_notice",{
+                method:"POST",
+                headers:{...getAuthHeader(),"Content-Type":"application/json"},
+                credentials:"include",
+                body:JSON.stringify({id: nid})
+            });
+            const d = await r.json();
+            if(d.code === 200){
+                alert("公告已删除");
+                window.location.href = "/";
+            }else{
+                showMsg(d.msg || d.detail || "删除失败","error");
+            }
+        }catch(err){
+            showMsg("网络请求异常","error");
+        }
+    }
+
+    async function loadDetail(){
+        const domTitle = document.getElementById("t_title");
+        const domContent = document.getElementById("t_content");
+        domTitle.innerText = "加载中...";
+        domContent.innerText = "";
+        try{
+            const res = await fetch(`/api/notice/${nid}`,{
+                credentials:"include",
+                headers:{...getAuthHeader()}
+            });
+            if(!res.ok){
+                showMsg("公告不存在或访问异常","error");
+                domTitle.innerText = "获取公告失败";
+                return;
+            }
+            const ret = await res.json();
+            noticeData = ret.data || ret;
+            domTitle.innerText = noticeData.title;
+            document.getElementById("t_content").innerHTML = noticeData.content || "";
+            document.getElementById("t_type").innerText = noticeData.type_text || noticeData.notice_type || "-";
+            document.getElementById("t_create").innerText = noticeData.create_time || "-";
+            document.getElementById("t_sn").innerText = noticeData.project_sn || "-";
+            // 非采购公告：不显示项目编号、时间、状态、报名区
+            const isPurchase = noticeData.notice_type === "purchase";
+            if(!noticeData.project_sn){
+                document.getElementById("snWrap").style.display = "none";
+            }else{
+                document.getElementById("snWrap").style.display = "";
+            }
+            document.getElementById("timeArea").style.display = isPurchase ? "block" : "none";
+            if(!isPurchase){
+                document.getElementById("supplierArea").style.display = "none";
+            }
+            document.getElementById("t_st").innerText = noticeData.start_time || "-";
+            document.getElementById("t_et").innerText = noticeData.end_time || "-";
+            document.getElementById("t_ot").innerText = noticeData.open_time || "-";
+            document.getElementById("t_status").innerText = noticeData.status_text || getStatusText(noticeData) || "-";
+
+            // 非项目类公告（平台通知/政策法规/业务指南）隐藏时间区块
+            if(!projectTypes.includes(noticeData.notice_type)){
+                document.getElementById("timeArea").style.display = "none";
+            }
+
+            // 渲染附件列表
+            const attachDom = document.getElementById("attachList");
+            if(noticeData.attachments && noticeData.attachments.length>0){
+                let attachHtml = "";
+                noticeData.attachments.forEach(att=>{
+                    attachHtml += `<div style="margin:4px 0;"><a href="${att.url || '/download/'+att.id}" target="_blank">${att.filename}</a></div>`;
+                })
+                attachDom.innerHTML = attachHtml;
+            }else{
+                attachDom.innerHTML = `<div class="empty-tip">暂无附件</div>`;
+            }
+
+            hasSignup = !!noticeData.has_signup;
+            hasFile = !!noticeData.has_file;
+            renderSupplierArea();
+        }catch(err){
+            showMsg("网络加载失败","error");
+        }
+    }
+
+    // 前端兜底：按时间计算中文状态
+    function getStatusText(n){
+        const now = new Date();
+        if(n.status === "open") return "已开标";
+        const ot = n.open_time ? new Date(n.open_time) : null;
+        const et = n.end_time ? new Date(n.end_time) : null;
+        const st = n.start_time ? new Date(n.start_time) : null;
+        if(ot && now >= ot) return "已开标";
+        if(et && now >= et) return "报名已截止";
+        if(st && now >= st) return "报名中";
+        if(st) return "未开始";
+        return "报名中";
+    }
+    // 撤回报名
+    async function cancelSignup(){
+        if(isPastDeadline()){ showMsg("已过投标截止时间，不能撤回报名","error"); return; }
+        if(!confirm("确定撤回报名吗？撤回后如需参与需重新报名")) return;
+        try{
+            const r = await fetch(`/api/cancel_signup/${nid}`,{
+                method:"POST",
+                credentials:"include",
+                headers:{...getAuthHeader()}
+            });
+            const d = await r.json();
+            showMsg(d.msg || "操作成功", r.ok ? "success":"error");
+            if(r.ok){ loadDetail(); }
+        }catch(err){
+            showMsg("撤回报名请求异常","error");
+        }
+    }
+    // 撤回投标文件
+    async function cancelFile(){
+        if(isPastDeadline()){ showMsg("已过投标截止时间，不能撤回投标文件","error"); return; }
+        if(!confirm("确定撤回已上传的投标文件吗？撤回后可重新上传")) return;
+        try{
+            const r = await fetch(`/api/cancel_file/${nid}`,{
+                method:"POST",
+                credentials:"include",
+                headers:{...getAuthHeader()}
+            });
+            const d = await r.json();
+            showMsg(d.msg || "操作成功", r.ok ? "success":"error");
+            if(r.ok){ loadDetail(); }
+        }catch(err){
+            showMsg("撤回文件请求异常","error");
+        }
+    }
+    // 前端时限拦截：是否已过投标截止
+    function isPastDeadline(){
+        return noticeData && noticeData.end_time && new Date() >= new Date(noticeData.end_time);
+    }
+    async function doSignup(){
+        if(isPastDeadline()){ showMsg("已过投标截止时间，不能报名","error"); return; }
+        try{
+            const r = await fetch(`/api/signup/${nid}`,{
+                method:"POST",
+                credentials:"include",
+                headers:{...getAuthHeader()}
+            })
+            const d = await r.json();
+            showMsg(d.msg || "报名成功", r.ok ? "success":"error");
+            if(r.ok){
+                hasSignup = true;
+                renderSupplierArea();
+            }
+        }catch(err){
+            showMsg("报名请求异常","error");
+        }
+    }
+
+    async function uploadBid(){
+        if(isPastDeadline()){ showMsg("已过投标截止时间，禁止上传投标文件","error"); return; }
+        let fileObj = document.getElementById("bidFile").files[0];
+        if(!fileObj){showMsg("请选择投标文件","error");return;}
+        const ext = (fileObj.name.split('.').pop() || '').toLowerCase();
+        const allow = ['jpg','jpeg','png','gif','bmp','webp','pdf','txt'];
+        if(!allow.includes(ext)){ showMsg("仅支持上传图片、PDF、TXT 等可在线预览的文件","error"); return; }
+        // 投标报价必填
+        const priceVal = parseFloat(document.getElementById("bidPrice").value);
+        if(!priceVal || priceVal <= 0){ showMsg("请填写有效的投标报价（大于0）","error"); return; }
+        let fd = new FormData();
+        fd.append("file",fileObj);
+        fd.append("price", priceVal);
+        try{
+            const r = await fetch(`/api/upload_file/${nid}`,{
+                method:"POST",
+                credentials:"include",
+                headers:{...getAuthHeader()},
+                body:fd
+            })
+            const d = await r.json();
+            showMsg(d.msg || "文件上传成功", r.ok ? "success":"error");
+            if(r.ok){
+                document.getElementById("bidPrice").value = "";
+                document.getElementById("bidFile").value = "";
+                loadDetail();
+            }
+        }catch(err){
+            showMsg("文件上传请求异常","error");
+        }
+    }
+
+    function gotoBidRoom(){
+        window.location.href=`/bid_room?project_id=${nid}`;
+    }
+
+    function showMsg(text,tp="error"){
+        document.getElementById("msgBox").innerHTML=`<div class="msg ${tp}">${text}</div>`
+        setTimeout(()=>{document.getElementById("msgBox").innerHTML=""},3000)
+    }
+
+    function logout(){
+        fetch("/logout", {
+            method:"POST",
+            credentials:"include",
+            headers:{...getAuthHeader()}
+        })
+        .then(res=>{
+            localStorage.removeItem("token");
+            if(res.ok){
+                location.href="/";
+            }
+        })
+    }
+
+    window.onload = async function(){
+        await checkLoginStatus();
+        await loadDetail();
+    }
+</script>
+</body>
+</html>

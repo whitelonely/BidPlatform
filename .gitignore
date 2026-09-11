@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+proc.db
+proc.db.bak_timefix
+uploads/
+.vercel/

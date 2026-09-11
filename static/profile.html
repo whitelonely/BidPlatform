@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人中心 - 采购管理平台</title>
+    <link rel="stylesheet" href="../static/css.css">
+</head>
+<body>
+<div class="main-container">
+    <div class="top-nav">
+        <div class="nav-inner">
+            <div class="nav-left">
+                <div class="nav-logo">采购管理平台</div>
+                <div class="nav-links" id="navLinks">
+                    <a href="/">首页</a>
+                    <a href="/notice">采购信息</a>
+                    <a href="/announce">平台通知</a>
+                    <a href="/policy">政策法规</a>
+                    <a href="/guide">业务指南</a>
+                    <!-- 动态追加业务菜单 -->
+                </div>
+            </div>
+            <div class="nav-right">
+                <span id="userWrap" style="display:none;position:relative;cursor:pointer;">
+                    <span id="userShow"></span>
+                    <div id="userMenu" style="display:none;position:absolute;right:0;top:100%;background:#fff;border:1px solid #ddd;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.15);z-index:999;min-width:150px;padding:6px 0;">
+                        <div id="menuRole" style="padding:8px 14px;color:#555;font-size:13px;border-bottom:1px solid #f0f0f0;"></div>
+                        <a href="/profile" id="menuProfile" style="display:none;padding:8px 14px;color:#1f4e99;text-decoration:none;white-space:nowrap;">个人中心</a>
+                    </div>
+                </span>
+                <a id="loginBtn" href="/login">登录/注册</a>
+                <button id="logoutBtn" onclick="logout()" style="display:none">退出登录</button>
+            </div>
+        </div>
+    </div>
+    <div class="wrap">
+        <div class="block">
+            <div class="block-title">个人信息</div>
+            <div class="panel">
+                <div id="msgBox"></div>
+                <table style="width:100%;border-collapse: collapse;margin:10px 0;">
+                    <tbody id="profileInfo">
+                        <tr><td style="padding:8px;color:#999;">加载中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="block">
+            <div class="block-title">修改密码</div>
+            <div class="panel">
+                <div class="msg success" id="pwdSuccess">密码修改成功</div>
+                <div class="msg error" id="pwdError">修改失败</div>
+                <div style="margin:10px 0;">
+                    <label>旧密码</label>
+                    <input type="password" id="oldPwd" style="width:260px;padding:6px;border:1px solid #ccc;border-radius:4px;">
+                </div>
+                <div style="margin:10px 0;">
+                    <label>新密码</label>
+                    <input type="password" id="newPwd" style="width:260px;padding:6px;border:1px solid #ccc;border-radius:4px;">
+                </div>
+                <div style="margin:10px 0;">
+                    <label>确认新密码</label>
+                    <input type="password" id="newPwd2" style="width:260px;padding:6px;border:1px solid #ccc;border-radius:4px;">
+                </div>
+                <div style="margin-top:12px;">
+                    <button class="btn" id="changePwdBtn">保存修改</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="footer">
+    技术支持：KAI<br>
+    Copyright© 采购管理平台 @KAI 版权所有
+</div>
+<script>
+    function getAuthHeader(){
+        const token = localStorage.getItem("token");
+        if(token){
+            return {"Authorization":"Bearer "+token}
+        }
+        return {};
+    }
+    function logout(){
+        fetch("/logout", {
+            method:"POST",
+            credentials:"include",
+            headers:{...getAuthHeader()}
+        })
+        .then(res=>{
+            localStorage.removeItem("token");
+            if(res.ok){
+                location.href="/";
+            }
+        })
+    }
+    function hidePwdMsg(){
+        document.getElementById("pwdSuccess").style.display = "none";
+        document.getElementById("pwdError").style.display = "none";
+    }
+    function showPwdMsg(text, ok){
+        hidePwdMsg();
+        const dom = document.getElementById(ok ? "pwdSuccess" : "pwdError");
+        dom.innerText = text;
+        dom.style.display = "block";
+    }
+    async function loadProfile(){
+        const dom = document.getElementById("profileInfo");
+        try{
+            const res = await fetch("/api/profile", {
+                credentials:"include",
+                headers:{...getAuthHeader()}
+            });
+            const ret = await res.json();
+            if(ret.code !== 200){
+                dom.innerHTML = `<tr><td style="padding:8px;color:red;">个人信息加载失败</td></tr>`;
+                return;
+            }
+            const d = ret.data;
+            dom.innerHTML = `
+                <tr>
+                    <td style="border:1px solid #ddd;padding:10px;background:#f5f5f5;width:140px;">用户名</td>
+                    <td style="border:1px solid #ddd;padding:10px;">${d.username}</td>
+                </tr>
+                <tr>
+                    <td style="border:1px solid #ddd;padding:10px;background:#f5f5f5;width:140px;">公司名称</td>
+                    <td style="border:1px solid #ddd;padding:10px;">${d.name || "-"}</td>
+                </tr>
+                <tr>
+                    <td style="border:1px solid #ddd;padding:10px;background:#f5f5f5;width:140px;">用户身份</td>
+                    <td style="border:1px solid #ddd;padding:10px;">${d.role_text || d.role}</td>
+                </tr>
+                <tr>
+                    <td style="border:1px solid #ddd;padding:10px;background:#f5f5f5;width:140px;">账号状态</td>
+                    <td style="border:1px solid #ddd;padding:10px;">${d.status_text || (d.status === 1 ? "启用" : "禁用")}</td>
+                </tr>
+                <tr>
+                    <td style="border:1px solid #ddd;padding:10px;background:#f5f5f5;width:140px;">注册时间</td>
+                    <td style="border:1px solid #ddd;padding:10px;">${d.create_time || "-"}</td>
+                </tr>`;
+        }catch(err){
+            dom.innerHTML = `<tr><td style="padding:8px;color:red;">个人信息加载失败</td></tr>`;
+        }
+    }
+    document.getElementById("changePwdBtn").addEventListener("click", async ()=>{
+        const oldPwd = document.getElementById("oldPwd").value;
+        const newPwd = document.getElementById("newPwd").value;
+        const newPwd2 = document.getElementById("newPwd2").value;
+        if(!oldPwd || !newPwd){
+            showPwdMsg("旧密码和新密码不能为空", false);
+            return;
+        }
+        if(newPwd.length < 6){
+            showPwdMsg("新密码长度不能少于6位", false);
+            return;
+        }
+        if(newPwd !== newPwd2){
+            showPwdMsg("两次输入的新密码不一致", false);
+            return;
+        }
+        try{
+            const res = await fetch("/api/change_password",{
+                method:"POST",
+                credentials:"include",
+                headers:{
+                    "Content-Type":"application/json",
+                    ...getAuthHeader()
+                },
+                body:JSON.stringify({old_password: oldPwd, new_password: newPwd})
+            });
+            const ret = await res.json();
+            if(ret.code === 200){
+                showPwdMsg(ret.msg, true);
+                document.getElementById("oldPwd").value = "";
+                document.getElementById("newPwd").value = "";
+                document.getElementById("newPwd2").value = "";
+                setTimeout(()=>{
+                    localStorage.removeItem("token");
+                    location.href="/login";
+                }, 1200);
+            }else{
+                showPwdMsg(ret.msg || "修改失败", false);
+            }
+        }catch(err){
+            showPwdMsg("网络请求异常", false);
+        }
+    });
+    async function checkLoginStatus(){
+        try{
+            const res = await fetch("/api/user", {
+                credentials:"include",
+                headers:{...getAuthHeader()}
+            });
+            const user = await res.json();
+            const userShow = document.getElementById("userShow");
+            const loginBtn = document.getElementById("loginBtn");
+            const logoutBtn = document.getElementById("logoutBtn");
+            const navLinks = document.getElementById("navLinks");
+            navLinks.querySelectorAll(".dynamic-menu").forEach(el=>el.remove());
+            if(user && user.username){
+                userShow.innerText = `欢迎，${user.username}`;
+                userShow.style.fontWeight = "bold";
+                userShow.style.color = "#1f4e99";
+                const _roleMap = {"supplier":"供应方","purchaser":"采购方","agent":"代理机构","super_admin":"超级管理员"};
+                document.getElementById("userWrap").style.display = "inline-block";
+                document.getElementById("menuRole").innerText = `【${_roleMap[user.role] || user.role}】`;
+                document.getElementById("menuProfile").style.display = ["supplier","purchaser","agent"].includes(user.role) ? "block" : "none";
+                const _uw = document.getElementById("userWrap");
+                const _um = document.getElementById("userMenu");
+                _uw.onmouseenter = ()=>{ _um.style.display = "block"; };
+                _uw.onmouseleave = ()=>{ _um.style.display = "none"; };
+                loginBtn.style.display = "none";
+                logoutBtn.style.display = "block";
+                if(user.role === "supplier"){
+                    navLinks.insertAdjacentHTML("beforeend",`<a href="/bid_room" class="dynamic-menu">开标室</a>`);
+                }
+                if(["purchaser","agent","super_admin"].includes(user.role)){
+                    navLinks.insertAdjacentHTML("beforeend",`<a href="/publish" class="dynamic-menu">发布公告</a>`);
+                    navLinks.insertAdjacentHTML("beforeend",`<a href="/bid_room" class="dynamic-menu">开标室</a>`);
+                }
+                if(user.role === "super_admin"){
+                    navLinks.insertAdjacentHTML("beforeend",`<a href="/user_manage" class="dynamic-menu">账号管理</a>`);
+                    // 管理员不允许使用个人中心
+                    showPwdMsg("管理员请在账号管理中修改密码", false);
+                }
+            }else{
+                userShow.innerText = "";
+                loginBtn.style.display = "block";
+                logoutBtn.style.display = "none";
+                location.href = "/login";
+            }
+        }catch(err){
+            console.error(err);
+        }
+    }
+    window.onload = async function(){
+        hidePwdMsg();
+        await checkLoginStatus();
+        loadProfile();
+    }
+</script>
+</body>
+</html>

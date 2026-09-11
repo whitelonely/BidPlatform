@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>采购管理平台</title>
+    <link rel="stylesheet" href="../static/css.css">
+</head>
+<body>
+<div class="main-container">
+    <div class="top-nav">
+        <div class="nav-inner">
+            <div class="nav-left">
+                <div class="nav-logo">采购管理平台</div>
+                <div class="nav-links" id="navLinks">
+                    <a href="/" class="active">首页</a>
+                    <a href="/notice">采购信息</a>
+                    <a href="/announce">平台通知</a>
+                    <a href="/policy">政策法规</a>
+                    <a href="/guide">业务指南</a>
+                    <!-- 动态追加业务菜单 -->
+                </div>
+            </div>
+            <div class="nav-right">
+                <span id="userWrap" style="display:none;position:relative;cursor:pointer;">
+                    <span id="userShow"></span>
+                    <div id="userMenu" style="display:none;position:absolute;right:0;top:100%;background:#fff;border:1px solid #ddd;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.15);z-index:999;min-width:150px;padding:6px 0;">
+                        <div id="menuRole" style="padding:8px 14px;color:#555;font-size:13px;border-bottom:1px solid #f0f0f0;"></div>
+                        <a href="/profile" id="menuProfile" style="display:none;padding:8px 14px;color:#1f4e99;text-decoration:none;white-space:nowrap;">个人中心</a>
+                    </div>
+                </span>
+                <a id="loginBtn" href="/login">登录/注册</a>
+                <button id="logoutBtn" onclick="logout()" style="display:none">退出登录</button>
+            </div>
+        </div>
+    </div>
+    <div class="wrap">
+        <div class="block">
+            <div class="block-title">信息查询</div>
+            <div class="entry-row">
+                <div class="entry-card">
+                    <div class="entry-card-header">项目公告查询</div>
+                    <div class="entry-card-body">
+                        <p>查询全部采购公告、中标信息、废标信息、公告更正等</p>
+                        <a href="/all_notice" class="btn">查看项目</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="block">
+            <div class="block-title">采购信息</div>
+            <div class="announce-panel" id="purchaseList">
+                <div class="empty-tip">加载中...</div>
+            </div>
+        </div>
+        <div class="block">
+            <div class="block-title">中标信息</div>
+            <div class="announce-panel" id="winList">
+                <div class="empty-tip">加载中...</div>
+            </div>
+        </div>
+        <div class="block">
+            <div class="block-title">平台通知</div>
+            <div class="announce-panel" id="announceList">
+                <div class="empty-tip">加载中...</div>
+            </div>
+        </div>
+        <div class="block">
+            <div class="block-title">政策法规</div>
+            <div class="announce-panel" id="policyList">
+                <div class="empty-tip">加载中...</div>
+            </div>
+        </div>
+        <div class="block">
+            <div class="block-title">业务指南</div>
+            <div class="announce-panel" id="guideList">
+                <div class="empty-tip">加载中...</div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="footer">
+    技术支持：KAI<br>
+    Copyright© 采购管理平台 @KAI 版权所有
+</div>
+<script>
+    function getAuthHeader(){
+        const token = localStorage.getItem("token");
+        if(token){
+            return {"Authorization":"Bearer "+token}
+        }
+        return {};
+    }
+    // 退出登录
+    function logout(){
+        fetch("/logout", {
+            method:"POST",
+            credentials:"include",
+            headers:{...getAuthHeader()}
+        })
+        .then(res=>{
+            localStorage.removeItem("token");
+            if(res.ok){
+                location.reload();
+            }
+        })
+    }
+    // 通用渲染：把列表塞进容器
+    function renderList(dom, list, emptyText){
+        if(!list || list.length === 0){
+            dom.innerHTML = `<div class="empty-tip">${emptyText}</div>`;
+            return;
+        }
+        let html = "";
+        list.forEach(item=>{
+            html += `
+            <div class="announce-item">
+                <a href="/notice/${item.id}">${item.title}</a>
+                <span class="announce-date">${item.create_time || ""}</span>
+            </div>`;
+        })
+        dom.innerHTML = html;
+    }
+    // 加载采购信息
+    async function loadPurchase(){
+        const dom = document.getElementById("purchaseList");
+        try{
+            const res = await fetch("/api/purchase", {
+                credentials:"include",
+                headers:{...getAuthHeader()}
+            });
+            const ret = await res.json();
+            renderList(dom, (ret && ret.data) || [], "暂无采购信息");
+        }catch(e){
+            dom.innerHTML = `<div class="empty-tip">数据加载失败</div>`;
+        }
+    }
+    // 加载中标信息
+    async function loadWin(){
+        const dom = document.getElementById("winList");
+        try{
+            const res = await fetch("/api/win", {
+                credentials:"include",
+                headers:{...getAuthHeader()}
+            });
+            const ret = await res.json();
+            renderList(dom, (ret && ret.data) || [], "暂无中标信息");
+        }catch(e){
+            dom.innerHTML = `<div class="empty-tip">数据加载失败</div>`;
+        }
+    }
+    // 加载平台通知
+    async function loadAnnounce(){
+        const dom = document.getElementById("announceList");
+        try{
+            const res = await fetch("/api/announce", {
+                credentials:"include",
+                headers:{...getAuthHeader()}
+            });
+            const ret = await res.json();
+            renderList(dom, (ret && ret.data) || [], "暂无平台通知");
+        }catch(e){
+            dom.innerHTML = `<div class="empty-tip">数据加载失败</div>`;
+        }
+    }
+    // 加载政策法规
+    async function loadPolicy(){
+        const dom = document.getElementById("policyList");
+        try{
+            const res = await fetch("/api/policy", {
+                credentials:"include",
+                headers:{...getAuthHeader()}
+            });
+            const ret = await res.json();
+            renderList(dom, (ret && ret.data) || [], "暂无政策法规");
+        }catch(e){
+            dom.innerHTML = `<div class="empty-tip">数据加载失败</div>`;
+        }
+    }
+    // 加载业务指南
+    async function loadGuide(){
+        const dom = document.getElementById("guideList");
+        try{
+            const res = await fetch("/api/guide", {
+                credentials:"include",
+                headers:{...getAuthHeader()}
+            });
+            const ret = await res.json();
+            renderList(dom, (ret && ret.data) || [], "暂无业务指南");
+        }catch(e){
+            dom.innerHTML = `<div class="empty-tip">数据加载失败</div>`;
+        }
+    }
+    // 检查登录状态 + 动态导航
+    async function checkLoginStatus(){
+        try{
+            const res = await fetch("/api/user", {
+                credentials:"include",
+                headers:{...getAuthHeader()}
+            });
+            const user = await res.json();
+            const userShow = document.getElementById("userShow");
+            const loginBtn = document.getElementById("loginBtn");
+            const logoutBtn = document.getElementById("logoutBtn");
+            const navLinks = document.getElementById("navLinks");
+            // 角色中文映射
+            let roleText = "";
+            if(user.role === "supplier") roleText = "供应方";
+            if(user.role === "purchaser") roleText = "采购方";
+            if(user.role === "agent") roleText = "代理机构";
+            if(user.role === "super_admin") roleText = "超级管理员";
+            // 清空动态菜单
+            navLinks.querySelectorAll(".dynamic-menu").forEach(el=>el.remove());
+
+            if(user && user.username){
+                userShow.innerText = `欢迎，${user.username}`;
+                userShow.style.fontWeight = "bold";
+                userShow.style.color = "#1f4e99";
+                const _roleMap = {"supplier":"供应方","purchaser":"采购方","agent":"代理机构","super_admin":"超级管理员"};
+                document.getElementById("userWrap").style.display = "inline-block";
+                document.getElementById("menuRole").innerText = `【${_roleMap[user.role] || user.role}】`;
+                document.getElementById("menuProfile").style.display = ["supplier","purchaser","agent"].includes(user.role) ? "block" : "none";
+                const _uw = document.getElementById("userWrap");
+                const _um = document.getElementById("userMenu");
+                _uw.onmouseenter = ()=>{ _um.style.display = "block"; };
+                _uw.onmouseleave = ()=>{ _um.style.display = "none"; };
+                loginBtn.style.display = "none";
+                logoutBtn.style.display = "block";
+                // 供应方：开标室
+                if(user.role === "supplier"){
+                    navLinks.insertAdjacentHTML("beforeend",`<a href="/bid_room" class="dynamic-menu">开标室</a>`);
+                }
+                // 采购方/代理/超管：发布公告 + 开标室
+                if(["purchaser","agent","super_admin"].includes(user.role)){
+                    navLinks.insertAdjacentHTML("beforeend",`<a href="/publish" class="dynamic-menu">发布公告</a>`);
+                    navLinks.insertAdjacentHTML("beforeend",`<a href="/bid_room" class="dynamic-menu">开标室</a>`);
+                }
+                if(user.role === "super_admin"){
+                    navLinks.insertAdjacentHTML("beforeend",`<a href="/user_manage" class="dynamic-menu">账号管理</a>`);
+                }
+            }else{
+                userShow.innerText = "";
+                loginBtn.style.display = "block";
+                logoutBtn.style.display = "none";
+            }
+        }catch(err){
+            console.error("用户信息加载失败",err);
+        }
+    }
+    window.onload = function(){
+        loadPurchase();
+        loadWin();
+        loadAnnounce();
+        loadPolicy();
+        loadGuide();
+        checkLoginStatus();
+    }
+</script>
+</body>
+</html>

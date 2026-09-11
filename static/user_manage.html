@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>账号管理 - 采购管理平台</title>
+    <link rel="stylesheet" href="../static/css.css">
+</head>
+<body>
+<div class="main-container">
+    <div class="top-nav">
+        <div class="nav-inner">
+            <div class="nav-left">
+                <div class="nav-logo">采购管理平台</div>
+                <div class="nav-links" id="navLinks">
+                    <a href="/">首页</a>
+                    <a href="/notice">采购信息</a>
+                    <a href="/announce">平台通知</a>
+                    <a href="/policy">政策法规</a>
+                    <a href="/guide">业务指南</a>
+                    <!-- 动态追加业务菜单 -->
+                </div>
+            </div>
+            <div class="nav-right">
+                <span id="userWrap" style="display:none;position:relative;cursor:pointer;">
+                    <span id="userShow"></span>
+                    <div id="userMenu" style="display:none;position:absolute;right:0;top:100%;background:#fff;border:1px solid #ddd;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.15);z-index:999;min-width:150px;padding:6px 0;">
+                        <div id="menuRole" style="padding:8px 14px;color:#555;font-size:13px;border-bottom:1px solid #f0f0f0;"></div>
+                        <a href="/profile" id="menuProfile" style="display:none;padding:8px 14px;color:#1f4e99;text-decoration:none;white-space:nowrap;">个人中心</a>
+                    </div>
+                </span>
+                <a id="loginBtn" href="/login">登录/注册</a>
+                <button id="logoutBtn" onclick="logout()" style="display:none">退出登录</button>
+            </div>
+        </div>
+    </div>
+    <div class="wrap">
+        <div class="block">
+            <div class="block-title">账号管理</div>
+            <div class="panel">
+                <div id="msgBox"></div>
+                <div id="umNoPerm" style="color:red;display:none;">仅超级管理员可访问本页面</div>
+                <div id="umContent">
+                    <div style="margin-bottom:16px;">
+                        <h4>新增账号</h4>
+                        <div>
+                            <label>用户名</label>
+                            <input type="text" id="newUsername">
+                        </div>
+                        <div>
+                            <label>密码</label>
+                            <input type="password" id="newPwd">
+                        </div>
+                        <div>
+                            <label>公司名称</label>
+                            <input type="text" id="newName">
+                        </div>
+                        <div>
+                            <label>角色</label>
+                            <select id="newRole">
+                                <option value="supplier">供应方</option>
+                                <option value="purchaser">采购方</option>
+                                <option value="agent">代理机构</option>
+                                <option value="super_admin">超级管理员</option>
+                            </select>
+                        </div>
+                        <button class="btn" id="addUserBtn">新增账号</button>
+                    </div>
+                    <hr>
+                    <h4>账号列表</h4>
+                    <table style="width:100%;border-collapse: collapse;margin:10px 0;">
+                        <thead>
+                            <tr style="background:#f5f5f5;">
+                                <th style="border:1px solid #ddd;padding:8px;text-align:left;">用户名</th>
+                                <th style="border:1px solid #ddd;padding:8px;text-align:left;">公司名称</th>
+                                <th style="border:1px solid #ddd;padding:8px;text-align:left;">角色</th>
+                                <th style="border:1px solid #ddd;padding:8px;text-align:left;">状态</th>
+                                <th style="border:1px solid #ddd;padding:8px;text-align:left;">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="userList">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="footer">
+    技术支持：KAI<br>
+    Copyright© 采购管理平台 @KAI 版权所有
+</div>
+<script>
+    function getAuthHeader(){
+        const token = localStorage.getItem("token");
+        if(token){
+            return {"Authorization":"Bearer "+token}
+        }
+        return {};
+    }
+    function logout(){
+        fetch("/logout", {
+            method:"POST",
+            credentials:"include",
+            headers:{...getAuthHeader()}
+        }).then(res=>{
+            localStorage.removeItem("token");
+            if(res.ok){
+                location.href="/";
+            }
+        })
+    }
+    function showMsg(text,tp="error"){
+        document.getElementById("msgBox").innerHTML=`<div class="msg ${tp}">${text}</div>`
+        setTimeout(()=>{document.getElementById("msgBox").innerHTML=""},3000)
+    }
+    let umLoading = false;
+    let myUsername = "";
+    const roleMap = {
+        "super_admin":"超级管理员",
+        "agent":"代理机构",
+        "purchaser":"采购方",
+        "supplier":"供应方"
+    };
+    async function loadUserList(){
+        const res = await fetch("/api/user_list",{
+            credentials:"include",
+            headers:{...getAuthHeader()}
+        });
+        const ret = await res.json();
+        let html = "";
+        ret.data.forEach(u=>{
+            const isMe = u.username === myUsername;
+            // 启用/禁用按钮：传目标状态（当前状态取反）；自己不能操作
+            const targetStatus = u.status === 1 ? 0 : 1;
+            const btnLabel = u.status === 1 ? "禁用" : "启用";
+            let opHtml = "";
+            if(isMe){
+                opHtml = `<span style="color:#999;">当前账号</span> <button class="btn" onclick="resetPwd('${u.username}')">修改密码</button>`;
+            }else{
+                opHtml = `<button class="btn" onclick="resetPwd('${u.username}')">重置密码</button> <button class="btn" onclick="toggleUserStatus('${u.username}',${targetStatus})">${btnLabel}</button>`;
+            }
+            html += `<tr>
+                <td style="border:1px solid #ddd;padding:8px;">${u.username}</td>
+                <td style="border:1px solid #ddd;padding:8px;">${u.name}</td>
+                <td style="border:1px solid #ddd;padding:8px;">${roleMap[u.role] || u.role}</td>
+                <td style="border:1px solid #ddd;padding:8px;">${u.status===1?"启用":"禁用"}</td>
+                <td style="border:1px solid #ddd;padding:8px;">${opHtml}</td>
+            </tr>`;
+        })
+        document.getElementById("userList").innerHTML = html;
+    }
+    // 超级管理员在账号管理里重置任意用户密码（悬浮窗口，不验证旧密码）
+    const DEFAULT_PWD = "123456";
+    let resetTarget = "";
+    window.resetPwd = function(username){
+        resetTarget = username;
+        const isMe = username === myUsername;
+        document.getElementById("resetTitle").innerText = isMe ? "修改我的密码" : "重置密码";
+        document.getElementById("resetUserLabel").innerText = isMe ? "请输入新的登录密码：" : `账号：${username}`;
+        document.getElementById("resetDefaultRow").style.display = isMe ? "none" : "block";
+        document.getElementById("resetOrTip").style.display = isMe ? "none" : "block";
+        document.getElementById("resetInputTip").innerText = isMe ? "输入新密码：" : "或由管理员输入新密码：";
+        document.getElementById("resetSubmitBtn").innerText = isMe ? "确认修改" : "确认重置";
+        document.getElementById("resetPwdInput").value = "";
+        document.getElementById("resetPwdInput2").value = "";
+        const m = document.getElementById("resetModal");
+        m.style.display = "flex";
+    }
+    window.closeResetModal = function(){
+        document.getElementById("resetModal").style.display = "none";
+    }
+    // 一键重置为默认密码
+    window.resetToDefault = async function(){
+        if(!confirm(`确定将「${resetTarget}」的密码重置为默认密码 ${DEFAULT_PWD} 吗？`)) return;
+        await doReset(DEFAULT_PWD);
+    }
+    // 自定义新密码提交
+    window.confirmResetPwd = async function(){
+        const pwd1 = document.getElementById("resetPwdInput").value;
+        const pwd2 = document.getElementById("resetPwdInput2").value;
+        if(!pwd1){
+            showMsg("新密码不能为空");
+            return;
+        }
+        if(pwd1 !== pwd2){
+            showMsg("两次输入的新密码不一致");
+            return;
+        }
+        await doReset(pwd1);
+    }
+    async function doReset(newPassword){
+        try{
+            const res = await fetch("/api/admin_change_password",{
+                method:"POST",
+                credentials:"include",
+                headers:{
+                    "Content-Type":"application/json",
+                    ...getAuthHeader()
+                },
+                body:JSON.stringify({username:resetTarget,new_password:newPassword})
+            })
+            const ret = await res.json();
+            if(ret.code===200){
+                showMsg(ret.msg || "密码修改成功","success");
+                closeResetModal();
+            }else{
+                showMsg(ret.msg || ret.detail || "操作失败");
+            }
+        }catch(err){
+            showMsg("网络异常");
+        }
+    }
+    window.toggleUserStatus = async function(username,targetStatus){
+        if(!confirm(`确定将账号「${username}」${targetStatus === 1 ? "启用" : "禁用"}吗？`)) return;
+        try{
+            const res = await fetch("/api/toggle_user_status",{
+                method:"POST",
+                credentials:"include",
+                headers:{
+                    "Content-Type":"application/json",
+                    ...getAuthHeader()
+                },
+                body:JSON.stringify({username,status:targetStatus})
+            })
+            const ret = await res.json();
+            if(ret.code===200){
+                showMsg("账号状态修改成功","success");
+                loadUserList();
+            }else{
+                showMsg(ret.msg || ret.detail || "操作失败");
+            }
+        }catch(err){
+            showMsg("网络异常");
+        }
+    }
+    document.getElementById("addUserBtn").addEventListener("click",async ()=>{
+        if(umLoading) return;
+        umLoading=true;
+        const username = document.getElementById("newUsername").value.trim();
+        const pwd = document.getElementById("newPwd").value.trim();
+        const name = document.getElementById("newName").value.trim();
+        const role = document.getElementById("newRole").value;
+        if(!username||!pwd||!name){
+            showMsg("用户名、密码、公司名称不能为空");
+            umLoading=false;
+            return;
+        }
+        try{
+            const res = await fetch("/api/add_user",{
+                method:"POST",
+                credentials:"include",
+                headers:{
+                    "Content-Type":"application/json",
+                    ...getAuthHeader()
+                },
+                body:JSON.stringify({username,password:pwd,name,role})
+            })
+            const ret = await res.json();
+            if(ret.code===200){
+                showMsg("账号新增成功","success");
+                loadUserList();
+                document.getElementById("newUsername").value="";
+                document.getElementById("newPwd").value="";
+                document.getElementById("newName").value="";
+            }else{
+                showMsg(ret.msg || "新增失败");
+            }
+        }catch(err){
+            showMsg("网络异常");
+        }finally{
+            umLoading=false;
+        }
+    })
+    async function checkAuth(){
+        const res = await fetch("/api/user", {
+            credentials:"include",
+            headers:{...getAuthHeader()}
+        });
+        const user = await res.json();
+        const userShow = document.getElementById("userShow");
+        const loginBtn = document.getElementById("loginBtn");
+        const logoutBtn = document.getElementById("logoutBtn");
+        const navLinks = document.getElementById("navLinks");
+        const umNoPerm = document.getElementById("umNoPerm");
+        const umContent = document.getElementById("umContent");
+        navLinks.querySelectorAll(".dynamic-menu").forEach(el=>el.remove());
+
+        if(user && user.username){
+            myUsername = user.username;
+            userShow.innerText = `欢迎，${user.username}`;
+            userShow.style.fontWeight = "bold";
+            userShow.style.color = "#1f4e99";
+            const _roleMap = {"supplier":"供应方","purchaser":"采购方","agent":"代理机构","super_admin":"超级管理员"};
+            document.getElementById("userWrap").style.display = "inline-block";
+            document.getElementById("menuRole").innerText = `【${_roleMap[user.role] || user.role}】`;
+            document.getElementById("menuProfile").style.display = ["supplier","purchaser","agent"].includes(user.role) ? "block" : "none";
+            const _uw = document.getElementById("userWrap");
+            const _um = document.getElementById("userMenu");
+            _uw.onmouseenter = ()=>{ _um.style.display = "block"; };
+            _uw.onmouseleave = ()=>{ _um.style.display = "none"; };
+            loginBtn.style.display = "none";
+            logoutBtn.style.display = "block";
+            // 动态导航：发布公告 + 开标室 + 账号管理(当前页)
+            navLinks.insertAdjacentHTML("beforeend",`<a href="/publish" class="dynamic-menu">发布公告</a>`);
+            navLinks.insertAdjacentHTML("beforeend",`<a href="/bid_room" class="dynamic-menu">开标室</a>`);
+            navLinks.insertAdjacentHTML("beforeend",`<a href="/user_manage" class="dynamic-menu active">账号管理</a>`);
+            if(user.role !== "super_admin"){
+                umNoPerm.style.display="block";
+                umContent.style.display="none";
+            }else{
+                umNoPerm.style.display="none";
+                umContent.style.display="block";
+                loadUserList();
+            }
+        }else{
+            userShow.innerText = "";
+            loginBtn.style.display = "block";
+            logoutBtn.style.display = "none";
+            umNoPerm.style.display="block";
+            umContent.style.display="none";
+        }
+    }
+    window.onload = function(){
+        checkAuth();
+    }
+</script>
+<!-- 重置密码悬浮窗口 -->
+<div id="resetModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.4);z-index:999;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:8px;padding:24px;width:380px;box-shadow:0 4px 20px rgba(0,0,0,.2);">
+        <h3 style="margin:0 0 8px;" id="resetTitle">重置密码</h3>
+        <div id="resetUserLabel" style="color:#888;font-size:13px;margin-bottom:16px;"></div>
+        <div id="resetDefaultRow" style="margin-bottom:8px;">
+            <button class="btn" onclick="resetToDefault()" style="width:100%;">重置为默认密码 123456</button>
+        </div>
+        <div id="resetOrTip" style="border-top:1px dashed #ddd;padding-top:6px;margin-top:6px;"></div>
+        <div style="border-top:1px dashed #ddd;padding-top:14px;margin-top:6px;">
+            <div style="margin-bottom:8px;color:#666;font-size:13px;" id="resetInputTip">输入新密码：</div>
+            <input type="password" id="resetPwdInput" placeholder="新密码" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
+            <input type="password" id="resetPwdInput2" placeholder="再次输入新密码" style="width:100%;margin-top:8px;padding:8px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
+        </div>
+        <div style="margin-top:18px;text-align:right;">
+            <button class="btn btn-gray" onclick="closeResetModal()">取消</button>
+            <button class="btn" id="resetSubmitBtn" onclick="confirmResetPwd()" style="margin-left:8px;">确认重置</button>
+        </div>
+    </div>
+</div>
+<script>
+</script>
+</body>
+</html>

@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>发布公告 - 采购管理平台</title>
+    <link rel="stylesheet" href="../static/css.css">
+    <style>
+        .editor-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 10px;background:#f7f7f7;border:1px solid #eee;border-radius:4px;margin-bottom:6px;}
+        .editor-toolbar .tb-group-label{font-size:12px;color:#888;white-space:nowrap;}
+        .editor-toolbar .tb-sep{width:1px;height:18px;background:#ddd;}
+        #pubForm > div{margin-bottom:18px;}
+        #pubForm label{display:block;font-weight:bold;margin-bottom:6px;}
+        #pubForm select,#pubForm input[type="text"],#pubForm input[type="datetime-local"]{width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;}
+        .tb-group{position:relative;display:inline-block;}
+        .tb-group:hover .tb-dropdown{display:block;}
+        .tb-dropdown{display:none;position:absolute;left:0;top:100%;z-index:999;min-width:120px;padding-top:4px;background:transparent;}
+        .tb-dropdown::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;}
+        .tb-dropdown .tb-menu{background:#fff;border:1px solid #ddd;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.15);padding:4px 0;}
+        .tb-dropdown button{display:block;width:100%;border:none;background:none;text-align:left;padding:8px 12px;cursor:pointer;font-size:13px;color:#333;white-space:nowrap;}
+        .tb-dropdown button:hover{background:#f0f4ff;color:#1f4e99;}
+    </style>
+</head>
+<body>
+<div class="main-container">
+    <div class="top-nav">
+        <div class="nav-inner">
+            <div class="nav-left">
+                <div class="nav-logo">采购管理平台</div>
+                <div class="nav-links" id="navLinks">
+                    <a href="/">首页</a>
+                    <a href="/notice">采购信息</a>
+                    <a href="/announce">平台通知</a>
+                    <a href="/policy">政策法规</a>
+                    <a href="/guide">业务指南</a>
+                    <!-- 动态追加业务菜单 -->
+                </div>
+            </div>
+            <div class="nav-right">
+                <span id="userWrap" style="display:none;position:relative;cursor:pointer;">
+                    <span id="userShow"></span>
+                    <div id="userMenu" style="display:none;position:absolute;right:0;top:100%;background:#fff;border:1px solid #ddd;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.15);z-index:999;min-width:150px;padding:6px 0;">
+                        <div id="menuRole" style="padding:8px 14px;color:#555;font-size:13px;border-bottom:1px solid #f0f0f0;"></div>
+                        <a href="/profile" id="menuProfile" style="display:none;padding:8px 14px;color:#1f4e99;text-decoration:none;white-space:nowrap;">个人中心</a>
+                    </div>
+                </span>
+                <a id="loginBtn" href="/login">登录/注册</a>
+                <button id="logoutBtn" onclick="logout()" style="display:none">退出登录</button>
+            </div>
+        </div>
+    </div>
+    <div class="wrap">
+        <div class="block">
+            <div class="block-title">公告发布</div>
+            <div class="panel">
+                <div class="msg success" id="pubSuccess">公告发布成功</div>
+                <div class="msg error" id="pubError">公告发布失败</div>
+                <div id="noPermissionTip" style="color:red;display:none;">您当前账号没有公告发布权限</div>
+                <div id="pubForm">
+                    <div>
+                        <label>公告类型</label>
+                        <select id="noticeType">
+                            <!-- 选项由JS根据角色动态追加 -->
+                        </select>
+                    </div>
+                    <!-- 项目编号：采购公告手动填写；中标/变更/终止公告可下拉选择也可手动填写 -->
+                    <div id="rowProjectSn">
+                        <label>项目编号</label>
+                        <input type="text" id="projectSn" placeholder="请输入项目编号">
+                        <select id="projectSnSelect" style="display:none;width:100%;margin-top:6px;padding:6px;border:1px solid #ccc;border-radius:4px;">
+                            <option value="">请选择项目编号</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>公告标题</label>
+                        <input type="text" id="title">
+                    </div>
+                    <div>
+                        <label>公告内容</label>
+                        <div class="editor-toolbar">
+                            <span class="tb-group-label">文字</span>
+                            <button type="button" class="btn" style="padding:3px 12px;font-weight:bold;" onclick="execFmt('bold')">B</button>
+                            <button type="button" class="btn" style="padding:3px 12px;font-style:italic;" onclick="execFmt('italic')">I</button>
+                            <button type="button" class="btn" style="padding:3px 12px;" onclick="clearEditorFormat()">清除格式</button>
+                            <span class="tb-sep"></span>
+                            <span class="tb-group-label">对齐</span>
+                            <button type="button" class="btn" style="padding:3px 12px;" onclick="execFmt('justifyLeft')">左对齐</button>
+                            <button type="button" class="btn" style="padding:3px 12px;" onclick="execFmt('justifyCenter')">居中</button>
+                            <button type="button" class="btn" style="padding:3px 12px;" onclick="execFmt('justifyRight')">右对齐</button>
+                            <span class="tb-sep"></span>
+                            <span class="tb-group-label">表格</span>
+                            <div class="tb-group">
+                                <button type="button" class="btn" style="padding:3px 12px;">表格操作 ▾</button>
+                                <div class="tb-dropdown">
+                                    <div class="tb-menu">
+                                        <button type="button" onclick="insertEditorTable()">插入表格</button>
+                                        <button type="button" onclick="tableAddRow()">加行</button>
+                                        <button type="button" onclick="tableAddCol()">加列</button>
+                                        <button type="button" onclick="tableDelRow()">删行</button>
+                                        <button type="button" onclick="tableDelCol()">删列</button>
+                                        <button type="button" onclick="tableDel()">删除表格</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="content" contenteditable="true" style="min-height:160px;border:1px solid #ccc;border-radius:4px;padding:8px;background:#fff;line-height:1.8;"></div>
+                    </div>
+                    <!-- 报名开始时间 -->
+                    <div id="rowStartTime">
+                        <label>报名开始时间</label>
+                        <input type="datetime-local" id="startTime">
+                    </div>
+                    <!-- 投标截止时间 -->
+                    <div id="rowEndTime">
+                        <label>投标截止时间</label>
+                        <input type="datetime-local" id="endTime">
+                    </div>
+                    <!-- 开标时间 -->
+                    <div id="rowOpenTime">
+                        <label>开标时间</label>
+                        <input type="datetime-local" id="openTime">
+                    </div>
+                    <div>
+                        <label>附件（公告文件，选填）</label>
+                        <input type="file" id="noticeFile" accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.pdf,.txt">
+                    </div>
+                    <div style="margin-top:12px;">
+                        <button class="btn" id="publishBtn">提交发布</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="footer">
+    技术支持：KAI<br>
+    Copyright© 采购管理平台 @KAI 版权所有
+</div>
+<script>
+    function getAuthHeader(){
+        const token = localStorage.getItem("token");
+        if(token){
+            return {"Authorization":"Bearer "+token}
+        }
+        return {};
+    }
+    function logout(){
+        fetch("/logout", {
+            method:"POST",
+            credentials:"include",
+            headers:{...getAuthHeader()}
+        })
+        .then(res=>{
+            localStorage.removeItem("token");
+            if(res.ok){
+                location.href="/";
+            }
+        })
+    }
+    function hideAllMsg(){
+        document.getElementById("pubSuccess").style.display = "none";
+        document.getElementById("pubError").style.display = "none";
+    }
+    // 切换类型时，控制项目相关字段显示隐藏
+    async function toggleProjectFields(){
+        const typeVal = document.getElementById("noticeType").value;
+        const rowProj = document.getElementById("rowProjectSn");
+        const inputProj = document.getElementById("projectSn");
+        const selProj = document.getElementById("projectSnSelect");
+        const rowStart = document.getElementById("rowStartTime");
+        const rowEnd = document.getElementById("rowEndTime");
+        const rowOpen = document.getElementById("rowOpenTime");
+        if(typeVal === "purchase"){
+            // 采购公告：手动填写项目编号 + 三个时间
+            rowProj.style.display = "block";
+            inputProj.style.display = "block";
+            selProj.style.display = "none";
+            rowStart.style.display = "block";
+            rowEnd.style.display = "block";
+            rowOpen.style.display = "block";
+        }else if(["win","change","stop"].includes(typeVal)){
+            // 中标/变更/终止：下拉选择 + 手动填写，不显示时间
+            rowProj.style.display = "block";
+            inputProj.style.display = "block";
+            selProj.style.display = "block";
+            rowStart.style.display = "none";
+            rowEnd.style.display = "none";
+            rowOpen.style.display = "none";
+            await loadPublishableProjects(typeVal);
+        }else{
+            // 平台通知/政策法规/业务指南：无项目编号与时间
+            rowProj.style.display = "none";
+            rowStart.style.display = "none";
+            rowEnd.style.display = "none";
+            rowOpen.style.display = "none";
+        }
+    }
+    // 加载可选项目（已过开标时间、未发布过同类型公告）
+    async function loadPublishableProjects(notice_type){
+        const selProj = document.getElementById("projectSnSelect");
+        selProj.innerHTML = '<option value="">请选择项目编号</option>';
+        try{
+            const res = await fetch(`/api/publishable_projects?notice_type=${notice_type}`, {
+                credentials:"include",
+                headers:{...getAuthHeader()}
+            });
+            if(!res.ok){
+                selProj.add(new Option("【-***-】项目列表加载失败（请确认后端已重启），可手动填写上方项目编号", ""));
+                return;
+            }
+            const ret = await res.json();
+            const list = (ret && ret.data) || [];
+            list.forEach(item=>{
+                if(item.no_sn){
+                    // 无编号项目：用 -***- 占位显示，选择后需手动填写编号
+                    selProj.add(new Option(`-***- - ${item.title}`, ""));
+                }else{
+                    selProj.add(new Option(`${item.project_sn} - ${item.title}`, item.project_sn));
+                }
+            });
+            if(list.length === 0){
+                selProj.add(new Option("【-***-】无符合项目，可手动填写上方项目编号", ""));
+            }
+        }catch(err){
+            selProj.add(new Option("【-***-】项目列表加载异常，可手动填写上方项目编号", ""));
+        }
+    }
+    // 富文本编辑工具
+    function execFmt(cmd){
+        document.execCommand(cmd, false, null);
+        document.getElementById("content").focus();
+    }
+    function insertEditorTable(){
+        const html = '<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;margin:8px 0;"><tr><td>&nbsp;</td><td>&nbsp;</td></tr><tr><td>&nbsp;</td><td>&nbsp;</td></tr></table>';
+        document.execCommand("insertHTML", false, html);
+    }
+    // 获取光标所在表格
+    function getCurrentTable(){
+        const sel = window.getSelection();
+        if(!sel || !sel.rangeCount) return null;
+        let node = sel.anchorNode;
+        if(node && node.nodeType === 3) node = node.parentNode;
+        while(node && node !== document.body){
+            if(node.tagName === "TABLE") return node;
+            node = node.parentNode;
+        }
+        return null;
+    }
+    // 表格加行（在底部追加一行）
+    function tableAddRow(){
+        const tb = getCurrentTable();
+        if(!tb){ alert("请先点击表格内的任意位置"); return; }
+        const cols = tb.rows[0] ? tb.rows[0].cells.length : 2;
+        const row = tb.insertRow(-1);
+        for(let i=0;i<cols;i++){
+            const cell = row.insertCell(-1);
+            cell.innerHTML = "&nbsp;";
+            cell.style.border = "1px solid #ccc";
+            cell.style.padding = "6px";
+        }
+        tb.style.borderCollapse = "collapse";
+        tb.setAttribute("border","1");
+        document.getElementById("content").focus();
+    }
+    // 表格加列（在右侧追加一列）
+    function tableAddCol(){
+        const tb = getCurrentTable();
+        if(!tb){ alert("请先点击表格内的任意位置"); return; }
+        for(let i=0;i<tb.rows.length;i++){
+            const cell = tb.rows[i].insertCell(-1);
+            cell.innerHTML = "&nbsp;";
+            cell.style.border = "1px solid #ccc";
+            cell.style.padding = "6px";
+        }
+        tb.style.borderCollapse = "collapse";
+        tb.setAttribute("border","1");
+        document.getElementById("content").focus();
+    }
+    // 定位光标所在行
+    function getCurrentRow(){
+        const sel = window.getSelection();
+        if(!sel || !sel.rangeCount) return null;
+        let node = sel.anchorNode;
+        if(node && node.nodeType === 3) node = node.parentNode;
+        while(node && node !== document.body){
+            if(node.tagName === "TR") return node;
+            node = node.parentNode;
+        }
+        return null;
+    }
+    // 定位光标所在单元格
+    function getCurrentCell(){
+        const sel = window.getSelection();
+        if(!sel || !sel.rangeCount) return null;
+        let node = sel.anchorNode;
+        if(node && node.nodeType === 3) node = node.parentNode;
+        while(node && node !== document.body){
+            if(node.tagName === "TD" || node.tagName === "TH") return node;
+            node = node.parentNode;
+        }
+        return null;
+    }
+    // 删除光标所在行
+    function tableDelRow(){
+        const tb = getCurrentTable();
+        if(!tb){ alert("请先点击表格内的任意位置"); return; }
+        const tr = getCurrentRow();
+        if(!tr){ alert("请先点击要删除的那一行"); return; }
+        if(tb.rows.length <= 1){ alert("表格至少保留一行"); return; }
+        tb.deleteRow(tr.rowIndex);
+        document.getElementById("content").focus();
+    }
+    // 删除光标所在列
+    function tableDelCol(){
+        const tb = getCurrentTable();
+        if(!tb){ alert("请先点击表格内的任意位置"); return; }
+        const td = getCurrentCell();
+        if(!td){ alert("请先点击要删除的那一列中的任意单元格"); return; }
+        if(tb.rows[0].cells.length <= 1){ alert("表格至少保留一列"); return; }
+        const idx = td.cellIndex;
+        for(let i=0;i<tb.rows.length;i++){
+            if(tb.rows[i].cells[idx]){
+                tb.rows[i].deleteCell(idx);
+            }
+        }
+        document.getElementById("content").focus();
+    }
+    // 删除整个表格
+    function tableDel(){
+        const tb = getCurrentTable();
+        if(!tb){ alert("请先点击表格内的任意位置"); return; }
+        if(confirm("确定删除该表格吗？")){
+            tb.remove();
+            document.getElementById("content").focus();
+        }
+    }
+    function clearEditorFormat(){
+        document.execCommand("removeFormat", false, null);
+        document.getElementById("content").focus();
+    }
+
+    // 统一导航：按角色动态追加菜单
+    function renderNavMenu(role){
+        const navLinks = document.getElementById("navLinks");
+        navLinks.querySelectorAll(".dynamic-menu").forEach(el=>el.remove());
+
+        if(role === "supplier"){
+            navLinks.insertAdjacentHTML("beforeend",`<a href="/bid_room" class="dynamic-menu">开标室</a>`);
+        }
+        if(["purchaser","agent","super_admin"].includes(role)){
+            navLinks.insertAdjacentHTML("beforeend",`<a href="/publish" class="dynamic-menu active">发布公告</a>`);
+            navLinks.insertAdjacentHTML("beforeend",`<a href="/bid_room" class="dynamic-menu">开标室</a>`);
+        }
+        if(role === "super_admin"){
+            navLinks.insertAdjacentHTML("beforeend",`<a href="/user_manage" class="dynamic-menu">账号管理</a>`);
+        }
+    }
+
+    let pubLoading = false;
+    let currentRole = "";
+    // 加载角色，动态渲染公告类型 + 权限控制 + 导航
+    async function loadRoleAndRender(){
+        hideAllMsg();
+        const res = await fetch("/api/user", {
+            credentials:"include",
+            headers:{...getAuthHeader()}
+        });
+        const user = await res.json();
+        currentRole = user.role;
+        const userShow = document.getElementById("userShow");
+        const loginBtn = document.getElementById("loginBtn");
+        const logoutBtn = document.getElementById("logoutBtn");
+        const noPermissionTip = document.getElementById("noPermissionTip");
+        const pubForm = document.getElementById("pubForm");
+        const typeSelect = document.getElementById("noticeType");
+        typeSelect.innerHTML = "";
+        let roleText = "";
+        if(currentRole === "super_admin"){
+            roleText = "超级管理员";
+            // 超级管理员：采购4类 + 平台通知、政策法规、业务指南
+            typeSelect.add(new Option("采购公告", "purchase"));
+            typeSelect.add(new Option("中标公告", "win"));
+            typeSelect.add(new Option("变更公告", "change"));
+            typeSelect.add(new Option("终止公告", "stop"));
+            typeSelect.add(new Option("平台通知", "announce"));
+            typeSelect.add(new Option("政策法规", "policy"));
+            typeSelect.add(new Option("业务指南", "guide"));
+        }else if(currentRole === "agent"){
+            roleText = "代理机构";
+            typeSelect.add(new Option("采购公告", "purchase"));
+            typeSelect.add(new Option("中标公告", "win"));
+            typeSelect.add(new Option("变更公告", "change"));
+        }else if(currentRole === "purchaser"){
+            roleText = "采购方";
+            typeSelect.add(new Option("采购公告", "purchase"));
+        }else if(currentRole === "supplier"){
+            roleText = "供应方";
+            //供应方无发布权限
+            noPermissionTip.style.display = "block";
+            pubForm.style.display = "none";
+        }
+        // 绑定下拉切换事件
+        typeSelect.onchange = toggleProjectFields;
+        // 选中项目编号后：填入输入框 + 自动带出项目标题（均可手动修改）
+        document.getElementById("projectSnSelect").onchange = function(){
+            const opt = this.options[this.selectedIndex];
+            if(!opt) return;
+            const text = opt.text || "";
+            const idx = text.indexOf(" - ");
+            if(opt.value){
+                // 有编号项目：自动填入编号并带出标题
+                document.getElementById("projectSn").value = opt.value;
+                if(idx > -1){
+                    document.getElementById("title").value = text.slice(idx + 3);
+                }
+            }else if(text.indexOf("-***-") > -1){
+                // 无编号项目：编号留空提示手动填写，仅带出标题
+                document.getElementById("projectSn").value = "";
+                document.getElementById("projectSn").placeholder = "该项目无编号，请手动填写";
+                if(idx > -1){
+                    document.getElementById("title").value = text.slice(idx + 3);
+                }
+            }
+        };
+        toggleProjectFields();
+
+        renderNavMenu(currentRole);
+
+        if(user && user.username){
+            userShow.innerText = `欢迎，${user.username}`;
+            userShow.style.fontWeight = "bold";
+            userShow.style.color = "#1f4e99";
+            const _roleMap = {"supplier":"供应方","purchaser":"采购方","agent":"代理机构","super_admin":"超级管理员"};
+            document.getElementById("userWrap").style.display = "inline-block";
+            document.getElementById("menuRole").innerText = `【${_roleMap[user.role] || user.role}】`;
+            document.getElementById("menuProfile").style.display = ["supplier","purchaser","agent"].includes(user.role) ? "block" : "none";
+            const _uw = document.getElementById("userWrap");
+            const _um = document.getElementById("userMenu");
+            _uw.onmouseenter = ()=>{ _um.style.display = "block"; };
+            _uw.onmouseleave = ()=>{ _um.style.display = "none"; };
+            loginBtn.style.display = "none";
+            logoutBtn.style.display = "block";
+        }else{
+            userShow.innerText = "";
+            loginBtn.style.display = "block";
+            logoutBtn.style.display = "none";
+            noPermissionTip.style.display = "block";
+            pubForm.style.display = "none";
+        }
+    }
+    //提交发布
+    document.getElementById("publishBtn").addEventListener("click",async ()=>{
+        if(pubLoading) return;
+        pubLoading = true;
+        const publishBtn = document.getElementById("publishBtn");
+        publishBtn.disabled = true;
+        hideAllMsg();
+        const notice_type = document.getElementById("noticeType").value;
+        const title = document.getElementById("title").value.trim();
+        // 富文本内容：校验纯文本非空，提交 innerHTML
+        const contentEditor = document.getElementById("content");
+        const contentText = contentEditor.innerText.trim();
+        const content = contentEditor.innerHTML.trim();
+        const isProjectType = ["purchase","win","change","stop"].includes(notice_type);
+        const projectSn = document.getElementById("projectSn").value.trim();
+        const startTime = document.getElementById("startTime").value;
+        const endTime = document.getElementById("endTime").value;
+        const openTime = document.getElementById("openTime").value;
+        const file = document.getElementById("noticeFile").files[0];
+        const pubSuccess = document.getElementById("pubSuccess");
+        const pubError = document.getElementById("pubError");
+
+        //基础必填：类型、标题、内容全部必须填
+        if(!notice_type || !title || !contentText){
+            pubError.innerText = "公告类型、标题、内容不能为空";
+            pubError.style.display="block";
+            pubLoading = false;
+            publishBtn.disabled = false;
+            return;
+        }
+        if(notice_type === "purchase"){
+            // 采购公告：校验三个时间；项目编号未填时提示确认，确认后也可发布
+            if(!startTime || !endTime || !openTime){
+                pubError.innerText = "采购公告：报名开始、投标截止、开标时间不能为空";
+                pubError.style.display="block";
+                pubLoading = false;
+                publishBtn.disabled = false;
+                return;
+            }
+            if(!projectSn){
+                if(!confirm("项目编号未填写，是否确认继续发布？")){
+                    pubLoading = false;
+                    publishBtn.disabled = false;
+                    return;
+                }
+            }
+            //时间逻辑校验
+            if(new Date(endTime) <= new Date(startTime)){
+                pubError.innerText = "投标截止时间必须晚于报名开始时间";
+                pubError.style.display="block";
+                pubLoading = false;
+                publishBtn.disabled = false;
+                return;
+            }
+            if(new Date(openTime) < new Date(endTime)){
+                pubError.innerText = "开标时间不能早于投标截止时间";
+                pubError.style.display="block";
+                pubLoading = false;
+                publishBtn.disabled = false;
+                return;
+            }
+        }else if(["win","change","stop"].includes(notice_type)){
+            // 中标/变更/终止：项目编号必选
+            if(!projectSn){
+                pubError.innerText = "请选择项目编号";
+                pubError.style.display="block";
+                pubLoading = false;
+                publishBtn.disabled = false;
+                return;
+            }
+        }
+        //附件类型校验
+        if(file){
+            const ext = (file.name.split('.').pop() || '').toLowerCase();
+            const allow = ['jpg','jpeg','png','gif','bmp','webp','pdf','txt'];
+            if(!allow.includes(ext)){
+                pubError.innerText = "仅支持上传图片、PDF、TXT 等可在线预览的文件";
+                pubError.style.display="block";
+                pubLoading = false;
+                publishBtn.disabled = false;
+                return;
+            }
+        }
+        //附件大小校验
+        if(file){
+            const maxSize = 20 * 1024 * 1024;
+            if(file.size > maxSize){
+                pubError.innerText = "附件不能超过20MB";
+                pubError.style.display="block";
+                pubLoading = false;
+                publishBtn.disabled = false;
+                return;
+            }
+        }
+
+        const formData = new FormData();
+        formData.append("notice_type", notice_type);
+        formData.append("title",title);
+        formData.append("content",content);
+        //只有项目类才传递项目编号和时间（编号未填则跳过）
+        if(isProjectType){
+            if(projectSn){
+                formData.append("project_sn", projectSn);
+            }
+            formData.append("start_time",startTime);
+            formData.append("end_time",endTime);
+            formData.append("open_time",openTime);
+        }
+
+        try{
+            const res = await fetch("/publish_notice",{
+                method:"POST",
+                body:formData,
+                credentials:"include",
+                headers:{...getAuthHeader()}
+            });
+            const ret = await res.json();
+            if(ret.code === 200){
+                const noticeId = ret.notice_id;
+                if(file){
+                    const fd = new FormData();
+                    fd.append("file", file);
+                    const uploadRes = await fetch(`/upload_notice_attach/${noticeId}`, {
+                        method:"POST",
+                        body:fd,
+                        credentials:"include",
+                        headers:{...getAuthHeader()}
+                    })
+                    const uploadRet = await uploadRes.json();
+                    if(!uploadRes.ok){
+                        alert("公告主体发布成功，但附件上传失败："+ (uploadRet.msg || ""));
+                    }
+                }
+                pubSuccess.style.display="block";
+                //清空表单
+                document.getElementById("title").value="";
+                document.getElementById("content").innerHTML="";
+                document.getElementById("projectSn").value="";
+                document.getElementById("projectSnSelect").innerHTML='<option value="">请选择项目编号</option>';
+                document.getElementById("startTime").value="";
+                document.getElementById("endTime").value="";
+                document.getElementById("openTime").value="";
+                document.getElementById("noticeFile").value="";
+                toggleProjectFields();
+            }else{
+                pubError.innerText = ret.msg || "公告发布失败";
+                pubError.style.display="block";
+            }
+        }catch(err){
+            console.error(err);
+            pubError.innerText="网络请求异常";
+            pubError.style.display="block";
+        }finally{
+            pubLoading = false;
+            publishBtn.disabled = false;
+        }
+    })
+    window.onload = function(){
+        loadRoleAndRender();
+    }
+</script>
+</body>
+</html>
