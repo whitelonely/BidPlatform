@@ -116,6 +116,7 @@
     }
     let umLoading = false;
     let myUsername = "";
+    let userRows = [];   // 缓存账号列表，供修改信息弹窗预填
     const roleMap = {
         "super_admin":"超级管理员",
         "agent":"代理机构",
@@ -129,6 +130,7 @@
         });
         const ret = await res.json();
         let html = "";
+        userRows = ret.data;
         ret.data.forEach(u=>{
             const isMe = u.username === myUsername;
             // 启用/禁用按钮：传目标状态（当前状态取反）；自己不能操作
@@ -136,9 +138,9 @@
             const btnLabel = u.status === 1 ? "禁用" : "启用";
             let opHtml = "";
             if(isMe){
-                opHtml = `<span style="color:#999;">当前账号</span> <button class="btn" onclick="resetPwd('${u.username}')">修改密码</button>`;
+                opHtml = `<span style="color:#999;">当前账号</span> <button class="btn" onclick="openInfoModal('${u.username}')">修改信息</button>`;
             }else{
-                opHtml = `<button class="btn" onclick="resetPwd('${u.username}')">重置密码</button> <button class="btn" onclick="toggleUserStatus('${u.username}',${targetStatus})">${btnLabel}</button>`;
+                opHtml = `<button class="btn" onclick="openInfoModal('${u.username}')">修改信息</button> <button class="btn" onclick="toggleUserStatus('${u.username}',${targetStatus})">${btnLabel}</button>`;
             }
             html += `<tr>
                 <td style="border:1px solid #ddd;padding:8px;">${u.username}</td>
@@ -150,46 +152,77 @@
         })
         document.getElementById("userList").innerHTML = html;
     }
-    // 超级管理员在账号管理里重置任意用户密码（悬浮窗口，不验证旧密码）
+    // 超级管理员在账号管理里修改任意用户信息（悬浮窗口：用户名/公司名称/角色/密码）
     const DEFAULT_PWD = "123456";
-    let resetTarget = "";
-    window.resetPwd = function(username){
-        resetTarget = username;
-        const isMe = username === myUsername;
-        document.getElementById("resetTitle").innerText = isMe ? "修改我的密码" : "重置密码";
-        document.getElementById("resetUserLabel").innerText = isMe ? "请输入新的登录密码：" : `账号：${username}`;
-        document.getElementById("resetDefaultRow").style.display = isMe ? "none" : "block";
-        document.getElementById("resetOrTip").style.display = isMe ? "none" : "block";
-        document.getElementById("resetInputTip").innerText = isMe ? "输入新密码：" : "或由管理员输入新密码：";
-        document.getElementById("resetSubmitBtn").innerText = isMe ? "确认修改" : "确认重置";
-        document.getElementById("resetPwdInput").value = "";
-        document.getElementById("resetPwdInput2").value = "";
-        const m = document.getElementById("resetModal");
-        m.style.display = "flex";
+    let editTarget = "";
+    let editIsMe = false;
+    window.openInfoModal = function(username){
+        const u = userRows.find(x=>x.username===username);
+        if(!u){ showMsg("未找到该账号"); return; }
+        editTarget = username;
+        editIsMe = (username === myUsername);
+        document.getElementById("infoTitle").innerText = editIsMe ? "修改我的信息" : "修改信息";
+        document.getElementById("infoUserLabel").innerText = "账号：" + username;
+        document.getElementById("infoUsername").value = u.username;
+        document.getElementById("infoName").value = u.name || "";
+        const roleSel = document.getElementById("infoRole");
+        roleSel.value = u.role;
+        // 自己的角色不可修改（防止锁死管理员）
+        roleSel.disabled = editIsMe;
+        document.getElementById("infoRoleTip").style.display = editIsMe ? "block" : "none";
+        document.getElementById("infoNewPwd").value = "";
+        document.getElementById("infoModal").style.display = "flex";
     }
-    window.closeResetModal = function(){
-        document.getElementById("resetModal").style.display = "none";
+    window.closeInfoModal = function(){
+        document.getElementById("infoModal").style.display = "none";
     }
     // 一键重置为默认密码
-    window.resetToDefault = async function(){
-        if(!confirm(`确定将「${resetTarget}」的密码重置为默认密码 ${DEFAULT_PWD} 吗？`)) return;
-        await doReset(DEFAULT_PWD);
+    window.infoResetDefault = async function(){
+        if(!confirm("确定将「" + editTarget + "」的密码重置为默认密码 " + DEFAULT_PWD + " 吗？")) return;
+        await doResetPwd(DEFAULT_PWD);
     }
-    // 自定义新密码提交
-    window.confirmResetPwd = async function(){
-        const pwd1 = document.getElementById("resetPwdInput").value;
-        const pwd2 = document.getElementById("resetPwdInput2").value;
-        if(!pwd1){
-            showMsg("新密码不能为空");
+    // 提交信息修改（用户名/公司名称/角色/密码）
+    window.confirmInfoUpdate = async function(){
+        const newUsername = document.getElementById("infoUsername").value.trim();
+        const name = document.getElementById("infoName").value.trim();
+        const role = document.getElementById("infoRole").value;
+        const pwd = document.getElementById("infoNewPwd").value;
+        if(!newUsername){
+            showMsg("用户名不能为空");
             return;
         }
-        if(pwd1 !== pwd2){
-            showMsg("两次输入的新密码不一致");
+        if(role !== "super_admin" && !name){
+            showMsg("公司名称不能为空");
             return;
         }
-        await doReset(pwd1);
+        try{
+            const res = await fetch("/api/update_user",{
+                method:"POST",
+                credentials:"include",
+                headers:{
+                    "Content-Type":"application/json",
+                    ...getAuthHeader()
+                },
+                body:JSON.stringify({username:editTarget,new_username:newUsername,name,role,new_password:pwd})
+            })
+            const ret = await res.json();
+            if(ret.code===200){
+                showMsg(ret.msg || "信息修改成功","success");
+                closeInfoModal();
+                loadUserList();
+                // 修改的是自己（改名或改密）时，刷新页面让导航栏等信息同步
+                if(editIsMe && (newUsername !== myUsername || pwd)){
+                    setTimeout(()=>location.reload(), 600);
+                }
+            }else{
+                showMsg(ret.msg || ret.detail || "操作失败");
+            }
+        }catch(err){
+            showMsg("网络异常");
+        }
     }
-    async function doReset(newPassword){
+    // 仅重置密码（供"重置为默认密码"按钮调用）
+    async function doResetPwd(newPassword){
         try{
             const res = await fetch("/api/admin_change_password",{
                 method:"POST",
@@ -198,12 +231,12 @@
                     "Content-Type":"application/json",
                     ...getAuthHeader()
                 },
-                body:JSON.stringify({username:resetTarget,new_password:newPassword})
+                body:JSON.stringify({username:editTarget,new_password:newPassword})
             })
             const ret = await res.json();
             if(ret.code===200){
                 showMsg(ret.msg || "密码修改成功","success");
-                closeResetModal();
+                closeInfoModal();
             }else{
                 showMsg(ret.msg || ret.detail || "操作失败");
             }
@@ -336,23 +369,37 @@
         });
     }
 </script>
-<!-- 重置密码悬浮窗口 -->
-<div id="resetModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.4);z-index:999;align-items:center;justify-content:center;">
-    <div style="background:#fff;border-radius:8px;padding:24px;width:380px;box-shadow:0 4px 20px rgba(0,0,0,.2);">
-        <h3 style="margin:0 0 8px;" id="resetTitle">重置密码</h3>
-        <div id="resetUserLabel" style="color:#888;font-size:13px;margin-bottom:16px;"></div>
-        <div id="resetDefaultRow" style="margin-bottom:8px;">
-            <button class="btn" onclick="resetToDefault()" style="width:100%;">重置为默认密码 123456</button>
+<!-- 修改信息悬浮窗口 -->
+<div id="infoModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.4);z-index:999;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:8px;padding:24px;width:400px;box-shadow:0 4px 20px rgba(0,0,0,.2);">
+        <h3 style="margin:0 0 8px;" id="infoTitle">修改信息</h3>
+        <div id="infoUserLabel" style="color:#888;font-size:13px;margin-bottom:16px;"></div>
+        <div style="margin-bottom:10px;">
+            <label style="display:block;margin-bottom:4px;">用户名</label>
+            <input type="text" id="infoUsername" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
         </div>
-        <div id="resetOrTip" style="border-top:1px dashed #ddd;padding-top:6px;margin-top:6px;"></div>
-        <div style="border-top:1px dashed #ddd;padding-top:14px;margin-top:6px;">
-            <div style="margin-bottom:8px;color:#666;font-size:13px;" id="resetInputTip">输入新密码：</div>
-            <input type="password" id="resetPwdInput" placeholder="新密码" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
-            <input type="password" id="resetPwdInput2" placeholder="再次输入新密码" style="width:100%;margin-top:8px;padding:8px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
+        <div style="margin-bottom:10px;">
+            <label style="display:block;margin-bottom:4px;">公司名称</label>
+            <input type="text" id="infoName" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
         </div>
+        <div style="margin-bottom:10px;">
+            <label style="display:block;margin-bottom:4px;">角色</label>
+            <select id="infoRole" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;">
+                <option value="supplier">供应方</option>
+                <option value="purchaser">采购方</option>
+                <option value="agent">代理机构</option>
+                <option value="super_admin">超级管理员</option>
+            </select>
+            <div id="infoRoleTip" style="color:#b71c1c;font-size:12px;margin-top:4px;display:none;">当前账号角色不可修改</div>
+        </div>
+        <div style="border-top:1px dashed #ddd;margin:14px 0 10px;padding-top:10px;">
+            <button class="btn" onclick="infoResetDefault()" style="width:100%;">重置为默认密码 123456</button>
+        </div>
+        <div style="margin-bottom:6px;color:#666;font-size:13px;">新密码（留空表示不修改密码）</div>
+        <input type="password" id="infoNewPwd" placeholder="留空则不修改密码" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;">
         <div style="margin-top:18px;text-align:right;">
-            <button class="btn btn-gray" onclick="closeResetModal()">取消</button>
-            <button class="btn" id="resetSubmitBtn" onclick="confirmResetPwd()" style="margin-left:8px;">确认重置</button>
+            <button class="btn btn-gray" onclick="closeInfoModal()">取消</button>
+            <button class="btn" id="infoSubmitBtn" onclick="confirmInfoUpdate()" style="margin-left:8px;">确认修改</button>
         </div>
     </div>
 </div>

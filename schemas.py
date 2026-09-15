@@ -72,3 +72,11 @@ class ChangePwdItem(BaseModel):
 class AdminChangePwdItem(BaseModel):
     username: str = ""
     new_password: str
+
+
+class UpdateUserItem(BaseModel):
+    username: str            # 原用户名（标识）
+    new_username: str = ""   # 新用户名，留空表示不修改
+    name: str = ""           # 公司名称，留空表示不修改
+    role: str = ""           # 角色，留空表示不修改
+    new_password: str = ""   # 新密码，留空表示不修改

@@ -53,15 +53,24 @@
                 <div class="msg error" id="pwdError">修改失败</div>
                 <div style="margin:10px 0;">
                     <label>旧密码</label>
-                    <input type="password" id="oldPwd" style="width:260px;padding:6px;border:1px solid #ccc;border-radius:4px;">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <input type="password" id="oldPwd" style="width:260px;padding:6px;border:1px solid #ccc;border-radius:4px;">
+                        <span id="oldPwdTip" style="font-size:12px;"></span>
+                    </div>
                 </div>
                 <div style="margin:10px 0;">
                     <label>新密码</label>
-                    <input type="password" id="newPwd" style="width:260px;padding:6px;border:1px solid #ccc;border-radius:4px;">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <input type="password" id="newPwd" style="width:260px;padding:6px;border:1px solid #ccc;border-radius:4px;">
+                        <span id="newPwdTip" style="font-size:12px;"></span>
+                    </div>
                 </div>
                 <div style="margin:10px 0;">
                     <label>确认新密码</label>
-                    <input type="password" id="newPwd2" style="width:260px;padding:6px;border:1px solid #ccc;border-radius:4px;">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <input type="password" id="newPwd2" style="width:260px;padding:6px;border:1px solid #ccc;border-radius:4px;">
+                        <span id="newPwd2Tip" style="font-size:12px;"></span>
+                    </div>
                 </div>
                 <div style="margin-top:12px;">
                     <button class="btn" id="changePwdBtn">保存修改</button>
@@ -143,6 +152,37 @@
             dom.innerHTML = `<tr><td style="padding:8px;color:red;">个人信息加载失败</td></tr>`;
         }
     }
+    // ===== 修改密码动态校验（输入时右侧实时提示）=====
+    function setTip(id, text, ok){
+        const el = document.getElementById(id);
+        el.innerText = text;
+        el.style.color = ok ? "#1b5e20" : "#b71c1c";
+    }
+    function checkNewPwd(){
+        const v = document.getElementById("newPwd").value;
+        if(!v){ document.getElementById("newPwdTip").innerText = ""; return false; }
+        if(v.length < 6){
+            setTip("newPwdTip", "密码长度不能少于6位", false);
+            return false;
+        }
+        setTip("newPwdTip", "✓ 长度符合要求", true);
+        return true;
+    }
+    function checkPwd2(){
+        const v2 = document.getElementById("newPwd2").value;
+        if(!v2){ document.getElementById("newPwd2Tip").innerText = ""; return false; }
+        if(v2 !== document.getElementById("newPwd").value){
+            setTip("newPwd2Tip", "两次输入的密码不一致", false);
+            return false;
+        }
+        setTip("newPwd2Tip", "✓ 两次密码一致", true);
+        return true;
+    }
+    document.getElementById("newPwd").addEventListener("input", ()=>{
+        checkNewPwd();
+        if(document.getElementById("newPwd2").value) checkPwd2();
+    });
+    document.getElementById("newPwd2").addEventListener("input", checkPwd2);
     document.getElementById("changePwdBtn").addEventListener("click", async ()=>{
         const oldPwd = document.getElementById("oldPwd").value;
         const newPwd = document.getElementById("newPwd").value;
@@ -180,7 +220,7 @@
                     location.href="/login";
                 }, 1200);
             }else{
-                showPwdMsg(ret.msg || "修改失败", false);
+                showPwdMsg(ret.msg || ret.detail || "修改失败", false);
             }
         }catch(err){
             showPwdMsg("网络请求异常", false);

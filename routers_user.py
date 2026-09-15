@@ -9,7 +9,7 @@ from jose import JWTError, jwt
 
 from config import DB_FILE, ACCESS_TOKEN_EXPIRE_MINUTES, SECRET_KEY, ALGORITHM
 from auth import get_user, get_password_hash, verify_password, create_access_token, oauth2_scheme
-from schemas import LoginItem, RegItem, AddUserItem, ToggleUserItem, RegisterItem, ChangePwdItem, AdminChangePwdItem
+from schemas import LoginItem, RegItem, AddUserItem, ToggleUserItem, RegisterItem, ChangePwdItem, AdminChangePwdItem, UpdateUserItem
 
 router = APIRouter()
 
@@ -138,6 +138,49 @@ async def api_toggle_user_status(item: ToggleUserItem, user=Depends(get_user)):
     conn.commit()
     conn.close()
     return {"code": 200, "msg": "状态修改成功"}
+
+
+# 超级管理员修改任意用户信息（用户名/公司名称/角色/密码，密码留空表示不修改）
+@router.post("/api/update_user")
+async def api_update_user(item: UpdateUserItem, user=Depends(get_user)):
+    if user["role"] != "super_admin":
+        raise HTTPException(status_code=403, detail="仅超级管理员可操作")
+    conn = sqlite3.connect(DB_FILE)
+    cur = conn.cursor()
+    cur.execute("SELECT id,username,name,role FROM users WHERE username=?", (item.username,))
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="用户不存在")
+    uid, old_username, old_name, old_role = row
+    # 新用户名唯一性
+    new_username = (item.new_username or "").strip() or old_username
+    if new_username != old_username:
+        cur.execute("SELECT id FROM users WHERE username=? AND id!=?", (new_username, uid))
+        if cur.fetchone():
+            conn.close()
+            raise HTTPException(status_code=400, detail="用户名已存在")
+    # 公司名称
+    new_name = (item.name or "").strip() or old_name
+    # 角色
+    new_role = (item.role or "").strip() or old_role
+    allow_all_roles = ["supplier", "purchaser", "agent", "super_admin"]
+    if new_role not in allow_all_roles:
+        conn.close()
+        raise HTTPException(status_code=400, detail="角色非法")
+    # 禁止修改自己的角色（防止把自己锁死）
+    if item.username == user["username"] and new_role != old_role:
+        conn.close()
+        raise HTTPException(status_code=400, detail="不能修改当前登录账号的角色")
+    cur.execute("UPDATE users SET username=?, name=?, role=? WHERE id=?",
+                (new_username, new_name, new_role, uid))
+    # 密码：非空则修改（管理员改密不验证旧密码、不做位数限制）
+    if item.new_password and item.new_password.strip():
+        cur.execute("UPDATE users SET password=? WHERE id=?",
+                    (get_password_hash(item.new_password.strip()), uid))
+    conn.commit()
+    conn.close()
+    return {"code": 200, "msg": "信息修改成功"}
 
 
 # ========== 个人中心 ==========
