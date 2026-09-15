@@ -87,7 +87,7 @@
             list.forEach(item=>{
                 html += `
                 <div class="item">
-                    <a href="/notice/${item.id}">${item.title}</a>
+                    <a href="/guide/${item.id}">${item.title}</a>
                     <span style="float:right;color:#888;font-size:13px;">${item.create_time || ""}</span>
                 </div>`;
             })
@@ -117,7 +117,7 @@
             navLinks.querySelectorAll(".dynamic-menu").forEach(el=>el.remove());
 
             if(user && user.username){
-                userShow.innerText = `欢迎，${user.username}`;
+                userShow.innerText = `欢迎，${user.role === "super_admin" ? user.username : (user.name || user.username)}`;
                 userShow.style.fontWeight = "bold";
                 userShow.style.color = "#1f4e99";
                 const _roleMap = {"supplier":"供应方","purchaser":"采购方","agent":"代理机构","super_admin":"超级管理员"};
@@ -136,8 +136,8 @@
                 }
                 // 采购方/代理/超管：发布公告 + 开标室
                 if(["purchaser","agent","super_admin"].includes(user.role)){
-                    navLinks.insertAdjacentHTML("beforeend",`<a href="/publish" class="dynamic-menu">发布公告</a>`);
                     navLinks.insertAdjacentHTML("beforeend",`<a href="/bid_room" class="dynamic-menu">开标室</a>`);
+                    navLinks.insertAdjacentHTML("beforeend",`<a href="/publish" class="dynamic-menu">发布公告</a>`);
                 }
                 if(user.role === "super_admin"){
                     navLinks.insertAdjacentHTML("beforeend",`<a href="/user_manage" class="dynamic-menu">账号管理</a>`);

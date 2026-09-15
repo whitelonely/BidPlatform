@@ -348,8 +348,8 @@
             navLinks.insertAdjacentHTML("beforeend",`<a href="/bid_room" class="dynamic-menu">开标室</a>`);
         }
         if(["purchaser","agent","super_admin"].includes(role)){
-            navLinks.insertAdjacentHTML("beforeend",`<a href="/publish" class="dynamic-menu active">发布公告</a>`);
             navLinks.insertAdjacentHTML("beforeend",`<a href="/bid_room" class="dynamic-menu">开标室</a>`);
+            navLinks.insertAdjacentHTML("beforeend",`<a href="/publish" class="dynamic-menu active">发布公告</a>`);
         }
         if(role === "super_admin"){
             navLinks.insertAdjacentHTML("beforeend",`<a href="/user_manage" class="dynamic-menu">账号管理</a>`);
@@ -381,7 +381,7 @@
             typeSelect.add(new Option("采购公告", "purchase"));
             typeSelect.add(new Option("中标公告", "win"));
             typeSelect.add(new Option("变更公告", "change"));
-            typeSelect.add(new Option("终止公告", "stop"));
+            typeSelect.add(new Option("废标（终止）公告", "stop"));
             typeSelect.add(new Option("平台通知", "announce"));
             typeSelect.add(new Option("政策法规", "policy"));
             typeSelect.add(new Option("业务指南", "guide"));
@@ -390,6 +390,7 @@
             typeSelect.add(new Option("采购公告", "purchase"));
             typeSelect.add(new Option("中标公告", "win"));
             typeSelect.add(new Option("变更公告", "change"));
+            typeSelect.add(new Option("废标（终止）公告", "stop"));
         }else if(currentRole === "purchaser"){
             roleText = "采购方";
             typeSelect.add(new Option("采购公告", "purchase"));
@@ -427,7 +428,7 @@
         renderNavMenu(currentRole);
 
         if(user && user.username){
-            userShow.innerText = `欢迎，${user.username}`;
+            userShow.innerText = `欢迎，${user.role === "super_admin" ? user.username : (user.name || user.username)}`;
             userShow.style.fontWeight = "bold";
             userShow.style.color = "#1f4e99";
             const _roleMap = {"supplier":"供应方","purchaser":"采购方","agent":"代理机构","super_admin":"超级管理员"};

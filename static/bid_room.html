@@ -5,6 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>开标室 - 采购管理平台</title>
     <link rel="stylesheet" href="../static/css.css">
+    <style>
+        /* 开标室各版块间距统一 12px（与公告界面一致） */
+        #roomContent h3, #roomContent h4, #roomContent p, #roomContent hr,
+        #supplierAreaAll, #myBidArea, #bidRecordArea {
+            margin: 12px 0;
+        }
+        #flowList { margin: 12px 0 !important; }
+        #flowAddBox { margin: 12px 0 !important; }
+        #closeRoomBtn { margin-bottom: 12px; }
+    </style>
 </head>
 <body>
 <div class="main-container">
@@ -73,8 +83,7 @@
                         <table style="width:100%;border-collapse: collapse;margin:10px 0;">
                             <thead>
                                 <tr style="background:#f5f5f5;">
-                                    <th style="border:1px solid #ddd;padding:8px;text-align:left;">供应方账号</th>
-                                    <th style="border:1px solid #ddd;padding:8px;text-align:left;">姓名</th>
+                                    <th style="border:1px solid #ddd;padding:8px;text-align:left;">供应商名称</th>
                                     <th style="border:1px solid #ddd;padding:8px;text-align:left;">报名状态</th>
                                     <th style="border:1px solid #ddd;padding:8px;text-align:left;">投标文件</th>
                                     <th style="border:1px solid #ddd;padding:8px;text-align:left;">投标报价</th>
@@ -218,7 +227,6 @@
                 }
             }
             html += `<tr>
-                <td style="border:1px solid #ddd;padding:8px;">${item.username}</td>
                 <td style="border:1px solid #ddd;padding:8px;">${item.name || ""}</td>
                 <td style="border:1px solid #ddd;padding:8px;">${item.apply_status || "已报名"}</td>
                 <td style="border:1px solid #ddd;padding:8px;">${fileHtml}</td>
@@ -536,7 +544,7 @@
             navLinks.querySelectorAll(".dynamic-menu").forEach(el=>el.remove());
 
             if(user && user.username){
-                userShow.innerText = `欢迎，${user.username}`;
+                userShow.innerText = `欢迎，${user.role === "super_admin" ? user.username : (user.name || user.username)}`;
                 userShow.style.fontWeight = "bold";
                 userShow.style.color = "#1f4e99";
                 const _roleMap = {"supplier":"供应方","purchaser":"采购方","agent":"代理机构","super_admin":"超级管理员"};
@@ -555,8 +563,8 @@
                 }
                 // 采购方/代理/超管：发布公告 + 开标室
                 if(["purchaser","agent","super_admin"].includes(user.role)){
-                    navLinks.insertAdjacentHTML("beforeend",`<a href="/publish" class="dynamic-menu">发布公告</a>`);
                     navLinks.insertAdjacentHTML("beforeend",`<a href="/bid_room" class="dynamic-menu active">开标室</a>`);
+                    navLinks.insertAdjacentHTML("beforeend",`<a href="/publish" class="dynamic-menu">发布公告</a>`);
                 }
                 if(user.role === "super_admin"){
                     navLinks.insertAdjacentHTML("beforeend",`<a href="/user_manage" class="dynamic-menu">账号管理</a>`);

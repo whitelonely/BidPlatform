@@ -132,6 +132,22 @@
         document.getElementById("regSuccess").style.display = "none";
         document.getElementById("regErr").style.display = "none";
     }
+    // 顶部提示条（不阻塞操作，自动消失）
+    function showToast(text, tp){
+        let t = document.getElementById("globalToast");
+        if(!t){
+            t = document.createElement("div");
+            t.id = "globalToast";
+            t.style.cssText = "position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:9999;padding:10px 22px;border-radius:4px;font-size:14px;box-shadow:0 2px 10px rgba(0,0,0,.15);";
+            document.body.appendChild(t);
+        }
+        t.style.background = tp === "success" ? "#e8f5e9" : "#fdecea";
+        t.style.color = tp === "success" ? "#1b5e20" : "#b71c1c";
+        t.innerText = text;
+        t.style.display = "block";
+        clearTimeout(t._timer);
+        t._timer = setTimeout(()=>{ t.style.display = "none"; }, 2500);
+    }
     let loginLoading = false;
     // 登录逻辑
     async function doLogin(){
@@ -160,7 +176,8 @@
             const ret = await res.json();
             if(ret.code === 200){
                 localStorage.setItem("token", ret.token);
-                location.href="/";
+                showToast("登录成功","success");
+                setTimeout(()=>{ location.href="/"; }, 1200);
             }else{
                 loginErr.innerText = ret.msg || "账号或密码错误";
                 loginErr.style.display="block";
@@ -222,6 +239,7 @@
             const ret = await res.json();
             if(ret.code === 200){
                 regSuc.style.display="block";
+                showToast("注册成功，请登录","success");
             }else{
                 regErr.innerText = ret.msg || "注册失败";
                 regErr.style.display="block";
@@ -254,7 +272,7 @@
         if(user.role === "agent") roleText = "代理机构";
         if(user.role === "super_admin") roleText = "超级管理员";
         if(user && user.username){
-            userShow.innerText = `欢迎，${user.username}【${roleText}】`;
+            userShow.innerText = `欢迎，${user.role === "super_admin" ? user.username : (user.name || user.username)}【${roleText}】`;
             userShow.style.fontWeight = "bold";
             userShow.style.color = "#1f4e99";
             const _roleMap = {"supplier":"供应方","purchaser":"采购方","agent":"代理机构","super_admin":"超级管理员"};

@@ -241,8 +241,13 @@
         const pwd = document.getElementById("newPwd").value.trim();
         const name = document.getElementById("newName").value.trim();
         const role = document.getElementById("newRole").value;
-        if(!username||!pwd||!name){
-            showMsg("用户名、密码、公司名称不能为空");
+        if(role!=="super_admin" && !name){
+            showMsg("公司名称不能为空");
+            umLoading=false;
+            return;
+        }
+        if(!username||!pwd){
+            showMsg("用户名、密码不能为空");
             umLoading=false;
             return;
         }
@@ -254,7 +259,7 @@
                     "Content-Type":"application/json",
                     ...getAuthHeader()
                 },
-                body:JSON.stringify({username,password:pwd,name,role})
+                body:JSON.stringify({username,password:pwd,name:(role==="super_admin"?"超级管理员":name),role})
             })
             const ret = await res.json();
             if(ret.code===200){
@@ -288,7 +293,7 @@
 
         if(user && user.username){
             myUsername = user.username;
-            userShow.innerText = `欢迎，${user.username}`;
+            userShow.innerText = `欢迎，${user.role === "super_admin" ? user.username : (user.name || user.username)}`;
             userShow.style.fontWeight = "bold";
             userShow.style.color = "#1f4e99";
             const _roleMap = {"supplier":"供应方","purchaser":"采购方","agent":"代理机构","super_admin":"超级管理员"};
@@ -302,8 +307,8 @@
             loginBtn.style.display = "none";
             logoutBtn.style.display = "block";
             // 动态导航：发布公告 + 开标室 + 账号管理(当前页)
-            navLinks.insertAdjacentHTML("beforeend",`<a href="/publish" class="dynamic-menu">发布公告</a>`);
             navLinks.insertAdjacentHTML("beforeend",`<a href="/bid_room" class="dynamic-menu">开标室</a>`);
+            navLinks.insertAdjacentHTML("beforeend",`<a href="/publish" class="dynamic-menu">发布公告</a>`);
             navLinks.insertAdjacentHTML("beforeend",`<a href="/user_manage" class="dynamic-menu active">账号管理</a>`);
             if(user.role !== "super_admin"){
                 umNoPerm.style.display="block";
@@ -323,6 +328,12 @@
     }
     window.onload = function(){
         checkAuth();
+        // 选择"超级管理员"角色时隐藏公司名称输入（管理员只填用户名和密码）
+        const _roleSel = document.getElementById("newRole");
+        const _nameRow = document.getElementById("newName").parentElement;
+        _roleSel.addEventListener("change", function(){
+            _nameRow.style.display = this.value === "super_admin" ? "none" : "block";
+        });
     }
 </script>
 <!-- 重置密码悬浮窗口 -->
