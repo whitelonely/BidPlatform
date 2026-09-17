@@ -146,6 +146,7 @@
     技术支持：KAI<br>
     Copyright© 采购管理平台 @KAI 版权所有
 </div>
+<script src="../static/preview.js"></script>
 <script>
     function getAuthHeader(){
         const token = localStorage.getItem("token");
@@ -223,7 +224,10 @@
                 fileHtml = `${item.file_name}`;
                 if(item.file_url){
                     const tk = (localStorage.getItem("token") || "");
-                    fileHtml += ` <a href="${item.file_url}?token=${encodeURIComponent(tk)}" target="_blank" style="color:#1f4e99;">预览</a>`;
+                    const ext = (item.file_name.split(".").pop() || "").toLowerCase();
+                    let u = item.file_url + "?token=" + encodeURIComponent(tk);
+                    if(ext === "pdf"){ u += "&inline=1"; }
+                    fileHtml += ` <a href="javascript:void(0)" onclick="previewFile('${u}','${item.file_name}')" style="color:#1f4e99;">预览</a>`;
                 }
             }
             html += `<tr>
@@ -241,9 +245,20 @@
     // 供应方：渲染自己的投标信息
     function renderMyBid(list, roomData){
         const mine = (list || []).find(item=>item.username === currentUsername) || {};
+        let myFileCell = "未上传";
+        if(mine.file_name){
+            myFileCell = mine.file_name;
+            if(mine.file_url){
+                const tk = (localStorage.getItem("token") || "");
+                const ext = (mine.file_name.split(".").pop() || "").toLowerCase();
+                let u = mine.file_url + "?token=" + encodeURIComponent(tk);
+                if(ext === "pdf"){ u += "&inline=1"; }
+                myFileCell += ` <a href="javascript:void(0)" onclick="previewFile('${u}','${mine.file_name}')" style="color:#1f4e99;">预览</a>`;
+            }
+        }
         const rows = [
             ["报名状态", mine.apply_status || "已报名"],
-            ["投标文件", mine.file_name ? mine.file_name + (mine.file_url ? "（可预览）" : "") : "未上传"],
+            ["投标文件", myFileCell],
             ["投标报价", mine.price != null ? mine.price + " 元" : "未报价"],
             ["二次报价", mine.second_price != null ? mine.second_price + " 元" : "未报价"],
             ["结果确认", mine.result || "未确认"]

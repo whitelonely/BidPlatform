@@ -133,7 +133,7 @@ async def api_bid_room(project_id: int | None = None, notice_id: int | None = No
 # 投标文件下载/预览（开标室权限内可访问；支持 header 或 ?token= 两种认证）
 @router.get("/download_bid/{notice_id}/{user_id}")
 async def download_bid(notice_id: int, user_id: int, token: str | None = None,
-                       authorization: str | None = Header(default=None)):
+                       authorization: str | None = Header(default=None), inline: bool = False):
     auth_token = (authorization or "").replace("Bearer ", "").strip() or token
     if not auth_token:
         raise HTTPException(status_code=401, detail="未登录，无法查看文件")
@@ -172,6 +172,9 @@ async def download_bid(notice_id: int, user_id: int, token: str | None = None,
     conn.close()
     if not fr or not fr[0] or not os.path.exists(fr[0]):
         raise HTTPException(status_code=404, detail="文件不存在")
+    if inline:
+        # 不带 filename 参数 → 浏览器内联预览（PDF/图片直接显示，不下载）
+        return FileResponse(fr[0])
     return FileResponse(fr[0], filename=fr[1])
 
 

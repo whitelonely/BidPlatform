@@ -205,12 +205,15 @@ async def upload_notice_attach(notice_id: int, file: UploadFile = File(...), use
     return {"code": 200, "msg": "公告附件上传成功"}
 
 
-# 公告附件下载
+# 公告附件下载（inline=1 时浏览器内联预览，不触发下载）
 @router.get("/download/{filename}")
-async def download_file(filename: str):
+async def download_file(filename: str, inline: bool = False):
     full_path = os.path.join(UPLOAD_DIR, filename)
     if not os.path.exists(full_path):
         raise HTTPException(status_code=404, detail="文件不存在")
+    if inline:
+        # 不带 filename 参数 → 无 Content-Disposition: attachment，浏览器直接预览
+        return FileResponse(full_path)
     return FileResponse(full_path, filename=filename)
 
 
