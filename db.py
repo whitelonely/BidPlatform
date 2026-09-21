@@ -5,7 +5,6 @@ import sqlite3
 from config import DB_FILE
 from auth import get_password_hash
 
-
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
@@ -118,7 +117,7 @@ def init_db():
     cur.execute("SELECT id FROM users WHERE username=?", ("admin",))
     if not cur.fetchone():
         hash_pwd = get_password_hash("admin123")
-        cur.execute("INSERT INTO users(username,password,role,name,status) VALUES (?,?,?,?,?)",
+        cur.execute("INSERT INTO users(username,password,role,name,status,create_time) VALUES (?,?,?,?,?,datetime('now','localtime'))",
                     ("admin", hash_pwd, "super_admin", "平台超级管理员", 1))
         conn.commit()
     conn.close()

@@ -287,3 +287,9 @@ th{
 .nav-logo{
     cursor: default !important;
 }
+/* notice content list compat (legacy <ol>/<ul>) */
+.panel ol,.panel ul{padding-left:26px!important;margin:4px 0!important;}
+.panel ol{list-style-type:decimal!important;}
+.panel ul{list-style-type:disc!important;}
+.panel h1,.panel h2,.panel h3,.panel h4,.panel h5{margin:8px 0 4px;}
+.panel pre{background:#f5f5f5;padding:10px;border-radius:4px;border:1px solid #eee;overflow-x:auto;}

@@ -225,7 +225,7 @@ async def api_second_bid(notice_id: int, second_price: float = Form(...), user=D
     if bp:
         cur.execute("UPDATE bid_price SET second_price=?, second_time=datetime('now','localtime') WHERE id=?", (second_price, bp[0]))
     else:
-        cur.execute("INSERT INTO bid_price(notice_id,user_id,price,second_price) VALUES (?,?,?,?)", (notice_id, user["id"], 0, second_price))
+        cur.execute("INSERT INTO bid_price(notice_id,user_id,price,second_price,bid_time,second_time) VALUES (?,?,?,?,datetime('now','localtime'),datetime('now','localtime'))", (notice_id, user["id"], 0, second_price))
     conn.commit()
     conn.close()
     return {"code": 200, "msg": "二次报价提交成功"}
@@ -253,7 +253,7 @@ async def api_confirm_result(notice_id: int, result: str = Form("已确认"), us
     if br:
         cur.execute("UPDATE bid_result SET result=?, confirm_time=datetime('now','localtime') WHERE id=?", (result, br[0]))
     else:
-        cur.execute("INSERT INTO bid_result(notice_id,user_id,result) VALUES (?,?,?)", (notice_id, user["id"], result))
+        cur.execute("INSERT INTO bid_result(notice_id,user_id,result,confirm_time) VALUES (?,?,?,datetime('now','localtime'))", (notice_id, user["id"], result))
     conn.commit()
     conn.close()
     return {"code": 200, "msg": "结果确认成功"}
@@ -309,7 +309,7 @@ async def api_bid_flow_add(item: SaveRecordItem, user=Depends(get_user)):
     if not content:
         conn.close()
         raise HTTPException(status_code=400, detail="内容不能为空")
-    cur.execute("INSERT INTO bid_flow(notice_id,content,user_id) VALUES (?,?,?)", (item.notice_id, content, user["id"]))
+    cur.execute("INSERT INTO bid_flow(notice_id,content,user_id,create_time) VALUES (?,?,?,datetime('now','localtime'))", (item.notice_id, content, user["id"]))
     conn.commit()
     conn.close()
     return {"code": 200, "msg": "发布成功"}
@@ -355,7 +355,7 @@ async def api_save_bid_record(item: SaveRecordItem, user=Depends(get_user)):
     if rec:
         cur.execute("UPDATE bid_record SET record=? WHERE notice_id=?", (item.record, rid))
     else:
-        cur.execute("INSERT INTO bid_record(notice_id,record) VALUES (?,?)", (rid, item.record))
+        cur.execute("INSERT INTO bid_record(notice_id,record,create_time) VALUES (?,?,datetime('now','localtime'))", (rid, item.record))
     conn.commit()
     conn.close()
     return {"code": 200, "msg": "保存成功"}
@@ -387,7 +387,7 @@ async def signup(notice_id: int, user=Depends(get_user)):
     if cur.fetchone():
         conn.close()
         return {"code": 200, "msg": "已报名"}
-    cur.execute("INSERT INTO tender_signup(notice_id,user_id) VALUES (?,?)", (notice_id, user["id"]))
+    cur.execute("INSERT INTO tender_signup(notice_id,user_id,signup_time) VALUES (?,?,datetime('now','localtime'))", (notice_id, user["id"]))
     conn.commit()
     conn.close()
     return {"code": 200, "msg": "报名成功"}
@@ -504,7 +504,7 @@ async def upload_file(notice_id: int, file: UploadFile = File(...), price: float
     if bp:
         cur.execute("UPDATE bid_price SET price=?, bid_time=datetime('now','localtime') WHERE id=?", (price, bp[0]))
     else:
-        cur.execute("INSERT INTO bid_price(notice_id,user_id,price) VALUES (?,?,?)", (notice_id, user["id"], price))
+        cur.execute("INSERT INTO bid_price(notice_id,user_id,price,bid_time) VALUES (?,?,?,datetime('now','localtime'))", (notice_id, user["id"], price))
     conn.commit()
     conn.close()
     return {"code": 200, "msg": "文件上传成功"}
@@ -541,7 +541,7 @@ async def bid_price(notice_id: int, price: float = Form(...), user=Depends(get_u
     if now < open_dt:
         conn.close()
         raise HTTPException(status_code=400, detail="尚未到开标时间，不能报价")
-    cur.execute("INSERT INTO bid_price(notice_id,user_id,price) VALUES (?,?,?)", (notice_id, user["id"], price))
+    cur.execute("INSERT INTO bid_price(notice_id,user_id,price,bid_time) VALUES (?,?,?,datetime('now','localtime'))", (notice_id, user["id"], price))
     cur.execute("UPDATE notices SET status='open' WHERE id=?", (notice_id,))
     conn.commit()
     conn.close()

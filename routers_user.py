@@ -51,7 +51,7 @@ async def api_register(item: RegItem):
         conn.close()
         return {"code": 400, "msg": "用户名已存在"}
     hash_pwd = get_password_hash(item.password)
-    cur.execute("INSERT INTO users(username,password,role,name,status) VALUES (?,?,?,?,1)",
+    cur.execute("INSERT INTO users(username,password,role,name,status,create_time) VALUES (?,?,?,?,1,datetime('now','localtime'))",
                 (item.username, hash_pwd, item.role, item.name))
     conn.commit()
     conn.close()
@@ -114,7 +114,7 @@ async def api_add_user(item: AddUserItem, user=Depends(get_user)):
         conn.close()
         return {"code": 400, "msg": "用户名已存在"}
     hash_pwd = get_password_hash(item.password)
-    cur.execute("INSERT INTO users(username,password,role,name,status) VALUES (?,?,?,?,1)",
+    cur.execute("INSERT INTO users(username,password,role,name,status,create_time) VALUES (?,?,?,?,1,datetime('now','localtime'))",
                 (item.username, hash_pwd, item.role, item.name))
     conn.commit()
     conn.close()
@@ -272,7 +272,7 @@ async def register(item: RegisterItem):
         conn.close()
         raise HTTPException(status_code=400, detail="用户名已存在")
     hash_pwd = get_password_hash(item.password)
-    cur.execute("INSERT INTO users(username,password,role,name) VALUES (?,?,?,?)",
+    cur.execute("INSERT INTO users(username,password,role,name,create_time) VALUES (?,?,?,?,datetime('now','localtime'))",
                 (item.username, hash_pwd, item.role, item.name))
     conn.commit()
     conn.close()

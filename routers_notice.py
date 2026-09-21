@@ -171,8 +171,8 @@ async def publish_notice(
     conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
     cur.execute('''
-    INSERT INTO notices(title,notice_type,content,publish_uid,project_sn,start_time,end_time,open_time,attach_file)
-    VALUES (?,?,?,?,?,?,?,?,?)''', (title, notice_type, content, user["id"], project_sn, start_time, end_time, open_time, ""))
+    INSERT INTO notices(title,notice_type,content,publish_uid,project_sn,start_time,end_time,open_time,attach_file,create_time)
+    VALUES (?,?,?,?,?,?,?,?,?,datetime('now','localtime'))''', (title, notice_type, content, user["id"], project_sn, start_time, end_time, open_time, ""))
     notice_id = cur.lastrowid
     conn.commit()
     conn.close()

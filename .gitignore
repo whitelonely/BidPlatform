@@ -1,5 +1,6 @@
 __pycache__/
 *.pyc
 proc.db.bak_timefix
+proc.db.bak_minus8
 uploads/
 .vercel/
