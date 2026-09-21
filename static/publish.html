@@ -10,6 +10,7 @@
         #pubForm label{display:block;font-weight:bold;margin-bottom:6px;}
         #pubForm select,#pubForm input[type="text"],#pubForm input[type="datetime-local"]{width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;}
     </style>
+    <script src="../static/ui_modal.js"></script>
 </head>
 <body>
 <div class="main-container">
@@ -303,7 +304,7 @@
         }
     }
     //提交发布
-    document.getElementById("publishBtn").addEventListener("click",async ()=>{
+    async function doPublishFlow(){
         if(pubLoading) return;
         pubLoading = true;
         const publishBtn = document.getElementById("publishBtn");
@@ -341,11 +342,14 @@
                 return;
             }
             if(!projectSn){
-                if(!confirm("项目编号未填写，是否确认继续发布？")){
-                    pubLoading = false;
-                    publishBtn.disabled = false;
-                    return;
-                }
+                pubLoading = false;
+                publishBtn.disabled = false;
+                uiModal.confirm({
+                    title: "提示",
+                    message: "项目编号未填写，是否确认继续发布？",
+                    onOk: function(){ doPublishFlow(); }
+                });
+                return;
             }
             //时间逻辑校验
             if(new Date(endTime) <= new Date(startTime)){
@@ -396,21 +400,30 @@
             }
         }
 
-        const formData = new FormData();
-        formData.append("notice_type", notice_type);
-        formData.append("title",title);
-        formData.append("content",content);
-        //只有项目类才传递项目编号和时间（编号未填则跳过）
-        if(isProjectType){
-            if(projectSn){
-                formData.append("project_sn", projectSn);
-            }
-            formData.append("start_time",startTime);
-            formData.append("end_time",endTime);
-            formData.append("open_time",openTime);
-        }
+        // 确认提交：取消可继续编辑，确认则正式发布
+        pubLoading = false;
+        publishBtn.disabled = false;
+        uiModal.confirm({
+            title: "确认提交",
+            message: "确认提交发布该公告吗？",
+            onOk: async function(){
+                pubLoading = true;
+                publishBtn.disabled = true;
+                const formData = new FormData();
+                formData.append("notice_type", notice_type);
+                formData.append("title",title);
+                formData.append("content",content);
+                //只有项目类才传递项目编号和时间（编号未填则跳过）
+                if(isProjectType){
+                    if(projectSn){
+                        formData.append("project_sn", projectSn);
+                    }
+                    formData.append("start_time",startTime);
+                    formData.append("end_time",endTime);
+                    formData.append("open_time",openTime);
+                }
 
-        try{
+                try{
             const res = await fetch("/publish_notice",{
                 method:"POST",
                 body:formData,
@@ -431,20 +444,28 @@
                     })
                     const uploadRet = await uploadRes.json();
                     if(!uploadRes.ok){
-                        alert("公告主体发布成功，但附件上传失败："+ (uploadRet.msg || ""));
+                        uiModal.show({
+                            title: "发布成功",
+                            message: "公告主体发布成功，但附件上传失败："+ (uploadRet.msg || ""),
+                            maskClose: false,
+                            buttons: [
+                                { text: "留在此页", cls: "btn btn-gray", onClick: function(){ uiModal.close(); } },
+                                { text: "查看公告", cls: "btn", onClick: function(){ window.location.href = "/notice/" + noticeId; } }
+                            ]
+                        });
+                        return;
                     }
                 }
-                pubSuccess.style.display="block";
-                //清空表单
-                document.getElementById("title").value="";
-                if(rtPub) rtPub.setContent("");
-                document.getElementById("projectSn").value="";
-                document.getElementById("projectSnSelect").innerHTML='<option value="">请选择项目编号</option>';
-                document.getElementById("startTime").value="";
-                document.getElementById("endTime").value="";
-                document.getElementById("openTime").value="";
-                document.getElementById("noticeFile").value="";
-                toggleProjectFields();
+                uiModal.show({
+                    title: "发布成功",
+                    message: "公告已发布成功",
+                    maskClose: false,
+                    buttons: [
+                        { text: "留在此页", cls: "btn btn-gray", onClick: function(){ uiModal.close(); } },
+                        { text: "查看公告", cls: "btn", onClick: function(){ window.location.href = "/notice/" + noticeId; } }
+                    ]
+                });
+                return;
             }else{
                 pubError.innerText = ret.msg || "公告发布失败";
                 pubError.style.display="block";
@@ -457,7 +478,10 @@
             pubLoading = false;
             publishBtn.disabled = false;
         }
-    })
+            }
+        });
+    }
+    document.getElementById("publishBtn").addEventListener("click", doPublishFlow);
     window.onload = function(){
         rtPub = mountRichEditor("contentEditor", {height:160});
         loadRoleAndRender();

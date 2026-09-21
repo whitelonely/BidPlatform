@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="../static/css.css">
     <style>
     </style>
+    <script src="../static/ui_modal.js"></script>
 </head>
 <body>
 <div class="main-container">
@@ -61,12 +62,12 @@
                         <div>开标时间：<span id="t_ot"></span></div>
                         <div>状态：<span id="t_status"></span></div>
                     </div>
-                    <hr>
+                    <hr id="hrBeforeAttach">
                     <div id="attachArea">
                         <h4>附件下载</h4>
                         <div id="attachList"></div>
                     </div>
-                    <hr>
+                    <hr id="hrAfterAttach">
                     <div id="supplierArea" style="display:none;">
                         <button class="btn" id="btnSignup" onclick="doSignup()">供应商报名</button>
                         <button class="btn btn-gray" id="btnCancelSignup" onclick="cancelSignup()" style="display:none;margin-left:6px;">撤回报名</button>
@@ -119,7 +120,7 @@
                     </div>
                     <div style="margin-top:12px;">
                         <button class="btn" onclick="saveEdit()">保存修改</button>
-                        <button class="btn btn-gray" onclick="cancelEdit()">取消</button>
+                        <button class="btn btn-gray" onclick="askCancelEdit()">取消</button>
                     </div>
                 </div>
             </div>
@@ -265,12 +266,23 @@
         document.getElementById("editBox").style.display = "none";
         document.getElementById("viewBox").style.display = "block";
     }
+    // 取消编辑前确认，防止误操作丢失修改
+    function askCancelEdit(){
+        uiModal.confirm({
+            title: "确认",
+            message: "确定取消编辑吗？未保存的修改将丢失。",
+            onOk: function(){ cancelEdit(); }
+        });
+    }
     async function saveEdit(){
         const ec = rtEdit;
         const title = document.getElementById("e_title").value.trim();
         if(!title){ showMsg("公告标题不能为空","error"); return; }
         if(!ec || !ec.getText()){ showMsg("公告内容不能为空","error"); return; }
-        if(!confirm("确认保存对公告的修改？")) return;
+        uiModal.confirm({
+            title: "确认",
+            message: "确认保存对公告的修改？",
+            onOk: async function(){
         try{
             const r = await fetch("/api/update_notice",{
                 method:"POST",
@@ -298,9 +310,18 @@
         }catch(err){
             showMsg("网络请求异常","error");
         }
+            }
+        });
     }
     async function delNotice(){
-        if(!confirm("确定删除该公告吗？删除后不可恢复，其报名、投标、开标相关数据将一并删除。")) return;
+        const isPurchase = noticeData && noticeData.notice_type === "purchase";
+        const delMsg = isPurchase
+            ? "确定删除该公告吗？删除后不可恢复，其报名、投标、开标相关数据将一并删除。"
+            : "确定删除该公告吗？删除后不可恢复。";
+        uiModal.confirm({
+            title: "确认",
+            message: delMsg,
+            onOk: async function(){
         try{
             const r = await fetch("/api/delete_notice",{
                 method:"POST",
@@ -310,14 +331,15 @@
             });
             const d = await r.json();
             if(d.code === 200){
-                alert("公告已删除");
-                window.location.href = "/";
+                uiModal.alert({ message: "公告已删除", maskClose: false, onOk: function(){ window.location.href = "/"; } });
             }else{
                 showMsg(d.msg || d.detail || "删除失败","error");
             }
         }catch(err){
             showMsg("网络请求异常","error");
         }
+            }
+        });
     }
 
     async function loadDetail(){
@@ -372,7 +394,9 @@
                 })
                 attachDom.innerHTML = attachHtml;
             }else{
-                attachDom.innerHTML = `<div class="empty-tip">暂无附件</div>`;
+                document.getElementById("attachArea").style.display = "none";
+                document.getElementById("hrBeforeAttach").style.display = "none";
+                document.getElementById("hrAfterAttach").style.display = "none";
             }
 
             hasSignup = !!noticeData.has_signup;
@@ -399,7 +423,10 @@
     // 撤回报名
     async function cancelSignup(){
         if(isPastDeadline()){ showMsg("已过投标截止时间，不能撤回报名","error"); return; }
-        if(!confirm("确定撤回报名吗？撤回后如需参与需重新报名")) return;
+        uiModal.confirm({
+            title: "确认",
+            message: "确定撤回报名吗？撤回后如需参与需重新报名",
+            onOk: async function(){
         try{
             const r = await fetch(`/api/cancel_signup/${nid}`,{
                 method:"POST",
@@ -412,11 +439,16 @@
         }catch(err){
             showMsg("撤回报名请求异常","error");
         }
+            }
+        });
     }
     // 撤回投标文件
     async function cancelFile(){
         if(isPastDeadline()){ showMsg("已过投标截止时间，不能撤回投标文件","error"); return; }
-        if(!confirm("确定撤回已上传的投标文件吗？撤回后可重新上传")) return;
+        uiModal.confirm({
+            title: "确认",
+            message: "确定撤回已上传的投标文件吗？撤回后可重新上传",
+            onOk: async function(){
         try{
             const r = await fetch(`/api/cancel_file/${nid}`,{
                 method:"POST",
@@ -429,6 +461,8 @@
         }catch(err){
             showMsg("撤回文件请求异常","error");
         }
+            }
+        });
     }
     // 前端时限拦截：是否已过投标截止
     function isPastDeadline(){

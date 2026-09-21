@@ -15,6 +15,7 @@
         #flowAddBox { margin: 12px 0 !important; }
         #closeRoomBtn { margin-bottom: 12px; }
     </style>
+    <script src="../static/ui_modal.js"></script>
 </head>
 <body>
 <div class="main-container">
@@ -433,7 +434,10 @@
     // 结束开标流程
     async function closeRoom(){
         const projectId = getUrlParam("project_id");
-        if(!confirm("确定结束该项目的开标流程吗？结束后状态将变为「已结束」")) return;
+        uiModal.confirm({
+            title: "确认",
+            message: "确定结束该项目的开标流程吗？结束后状态将变为「已结束」",
+            onOk: async function(){
         try{
             const res = await fetch("/api/bid_room_close",{
                 method:"POST",
@@ -454,6 +458,8 @@
         }catch(e){
             showMsg("msgBox","网络异常");
         }
+            }
+        });
     }
     // 供应方提交二次报价
     async function submitSecondBid(){
@@ -484,7 +490,10 @@
     // 供应方结果确认
     async function confirmResult(){
         const projectId = getUrlParam("project_id");
-        if(!confirm("确定确认本次开标结果吗？")) return;
+        uiModal.confirm({
+            title: "确认",
+            message: "确定确认本次开标结果吗？",
+            onOk: async function(){
         const fd = new FormData();
         fd.append("result", "已确认");
         try{
@@ -504,6 +513,8 @@
         }catch(e){
             showMsg("msgBox","网络异常");
         }
+            }
+        });
     }
     //保存开标记录
     document.getElementById("saveRecordBtn").addEventListener("click",async ()=>{

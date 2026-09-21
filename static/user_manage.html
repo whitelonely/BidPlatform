@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>账号管理 - 采购管理平台</title>
     <link rel="stylesheet" href="../static/css.css">
+    <script src="../static/ui_modal.js"></script>
 </head>
 <body>
 <div class="main-container">
@@ -178,8 +179,11 @@
     }
     // 一键重置为默认密码
     window.infoResetDefault = async function(){
-        if(!confirm("确定将「" + editTarget + "」的密码重置为默认密码 " + DEFAULT_PWD + " 吗？")) return;
-        await doResetPwd(DEFAULT_PWD);
+        uiModal.confirm({
+            title: "确认",
+            message: "确定将「" + editTarget + "」的密码重置为默认密码 " + DEFAULT_PWD + " 吗？",
+            onOk: async function(){ await doResetPwd(DEFAULT_PWD); }
+        });
     }
     // 提交信息修改（用户名/公司名称/角色/密码）
     window.confirmInfoUpdate = async function(){
@@ -245,7 +249,13 @@
         }
     }
     window.toggleUserStatus = async function(username,targetStatus){
-        if(!confirm(`确定将账号「${username}」${targetStatus === 1 ? "启用" : "禁用"}吗？`)) return;
+        const u = (userRows || []).find(x => x.username === username) || {};
+        const companyName = u.name || "";
+        const actionText = targetStatus === 1 ? "启用" : "禁用";
+        uiModal.confirm({
+            title: "确认",
+            message: `确定将 用户名「${username}」公司名称「${companyName}」 的账号${actionText}吗？`,
+            onOk: async function(){
         try{
             const res = await fetch("/api/toggle_user_status",{
                 method:"POST",
@@ -266,6 +276,8 @@
         }catch(err){
             showMsg("网络异常");
         }
+            }
+        });
     }
     document.getElementById("addUserBtn").addEventListener("click",async ()=>{
         if(umLoading) return;
